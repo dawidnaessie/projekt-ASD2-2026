@@ -1,5 +1,5 @@
 import os
-import math
+from functools import cmp_to_key
 from typing import List, Tuple
 
 def orientacja(p: Tuple[int, int], q: Tuple[int, int], r: Tuple[int, int]) -> int:
@@ -52,11 +52,20 @@ def graham_scan(punkty: List[Tuple[int, int]]) -> List[Tuple[int, int]]:
     # Punkt początkowy: najniższy Y, w razie remisów najmniejszy X
     p0 = min(punkty, key=lambda p: (p[1], p[0]))
     
-    def polar_order(p: Tuple[int, int]) -> Tuple[float, int]:
-        return (math.atan2(p[1] - p0[1], p[0] - p0[0]), odleglosc_kwadrat(p0, p))
-        
-    # Sortowanie pozostałych punktów względem kąta i odległości
-    posortowane = sorted([p for p in punkty if p != p0], key=polar_order)
+    def compare_polar(p: Tuple[int, int], q: Tuple[int, int]) -> int:
+        o = orientacja(p0, p, q)
+        if o > 0:
+            return -1  # p tworzy skręt w lewo względem q, więc ma mniejszy kąt
+        elif o < 0:
+            return 1   # q ma mniejszy kąt
+        else:
+            # Współliniowe z p0: ten leżący bliżej jest mniejszy
+            d_p = odleglosc_kwadrat(p0, p)
+            d_q = odleglosc_kwadrat(p0, q)
+            return -1 if d_p < d_q else (1 if d_p > d_q else 0)
+            
+    # Sortowanie pozostałych punktów względem kąta bez użycia funkcji trygonometrycznych
+    posortowane = sorted([p for p in punkty if p != p0], key=cmp_to_key(compare_polar))
     
     # Oczyszczanie ze współliniowych - zostawiamy tylko najdalszy punkt dla każdego kąta
     unikalne_katy = []
