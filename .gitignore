@@ -1,0 +1,4 @@
+# Ignoruj pliki tymczasowe Pythona
+__pycache__/
+*.py[cod]
+*$py.class
