@@ -7,11 +7,12 @@ from functools import cmp_to_key
 # Importujemy logikę z naszego modułu geometrycznego
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from src.patrol_ksiecia import orientacja, odleglosc_kwadrat
+from src.przydzial_krasnoludkow import zbuduj_i_rozwiaz_siec
 
 pygame.init()
 WIDTH, HEIGHT = 1000, 700
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Wizualizacja Algorytmu Grahama - Krasnoludki 2026")
+pygame.display.set_caption("Wizualizacja Algorytmów - Krasnoludki 2026")
 
 # Kolory
 WHITE = (250, 250, 250)
@@ -21,6 +22,8 @@ GREEN = (50, 200, 50)
 BLUE = (50, 100, 250)
 GRAY = (150, 150, 150)
 LIGHT_BLUE = (173, 216, 230)
+ORANGE = (255, 165, 0)
+PURPLE = (128, 0, 128)
 
 font = pygame.font.SysFont("arial", 22)
 title_font = pygame.font.SysFont("arial", 32, bold=True)
@@ -80,20 +83,40 @@ def graham_scan_generator(punkty):
     # Na sam koniec dodajemy p0 na koniec, aby rysowanie zamkniętej pętli w Pygame było ładne
     yield list(stos) + [p0], "Krok 4: Algorytm zakończony! Otrzymano optymalną Trasę Patrolu Księcia."
 
+def generate_krasnoludki_kopalnie(num_k, num_m):
+    padding = 80
+    krasnoludki = [(f"K{i}", random.randint(padding, WIDTH - padding), random.randint(padding, HEIGHT - padding)) for i in range(1, num_k + 1)]
+    kopalnie = [(f"M{i}", random.randint(padding, WIDTH - padding), random.randint(padding, HEIGHT - padding), random.randint(1, 4)) for i in range(1, num_m + 1)]
+    return krasnoludki, kopalnie
+
+def mcmf_generator(krasnoludki, kopalnie):
+    yield [], "Krok 1: Wygenerowano krasnoludków i kopalnie"
+    flow, cost, przydzialy = zbuduj_i_rozwiaz_siec(krasnoludki, kopalnie)
+    
+    current_przydzialy = []
+    for p in przydzialy:
+        current_przydzialy.append(p)
+        yield list(current_przydzialy), f"Przydzielam: {p[0]} do {p[1]} (koszt: {p[2]})"
+        
+    yield current_przydzialy, f"Zakończono! Przydzielono: {flow}, Całkowity koszt: {cost}"
+
 def main():
     clock = pygame.time.Clock()
-    points = generate_points(25)
+    mode = "MENU"
+    points = []
+    krasnoludki = []
+    kopalnie = []
     
-    gen = graham_scan_generator(points)
-    current_hull = []
-    message = "Naciśnij SPACJĘ, aby wygenerować nową mapę i uruchomić algorytm"
+    gen = None
+    current_data = []
+    message = ""
     
     running = True
     animating = False
     finished = False
     
     last_update = pygame.time.get_ticks()
-    update_delay = 500 # ms - opóźnienie pomiędzy krokami algorytmu
+    update_delay = 500
     
     while running:
         screen.fill(WHITE)
@@ -102,68 +125,122 @@ def main():
             if event.type == pygame.QUIT:
                 running = False
             elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_SPACE:
-                    points = generate_points(25)
-                    gen = graham_scan_generator(points)
-                    current_hull = []
-                    message = "Inicjalizacja środowiska..."
-                    animating = True
-                    finished = False
-                elif event.key == pygame.K_RIGHT and not finished and animating:
-                    # Przyspieszenie o 1 krok z ręki
-                    try:
-                        current_hull, message = next(gen)
-                    except StopIteration:
-                        finished = True
+                if mode == "MENU":
+                    if event.key == pygame.K_1:
+                        mode = "GRAHAM"
+                        points = generate_points(25)
+                        gen = graham_scan_generator(points)
+                        current_data = []
+                        message = "Inicjalizacja środowiska..."
+                        animating = True
+                        finished = False
+                    elif event.key == pygame.K_2:
+                        mode = "MCMF"
+                        krasnoludki, kopalnie = generate_krasnoludki_kopalnie(15, 5)
+                        gen = mcmf_generator(krasnoludki, kopalnie)
+                        current_data = []
+                        message = "Inicjalizacja środowiska..."
+                        animating = True
+                        finished = False
+                else:
+                    if event.key == pygame.K_ESCAPE:
+                        mode = "MENU"
                         animating = False
+                    elif event.key == pygame.K_SPACE:
+                        if mode == "GRAHAM":
+                            points = generate_points(25)
+                            gen = graham_scan_generator(points)
+                        elif mode == "MCMF":
+                            krasnoludki, kopalnie = generate_krasnoludki_kopalnie(15, 5)
+                            gen = mcmf_generator(krasnoludki, kopalnie)
+                        current_data = []
+                        message = "Inicjalizacja środowiska..."
+                        animating = True
+                        finished = False
+                    elif event.key == pygame.K_RIGHT and not finished and animating:
+                        try:
+                            current_data, message = next(gen)
+                        except StopIteration:
+                            finished = True
+                            animating = False
 
         if animating and not finished:
             now = pygame.time.get_ticks()
             if now - last_update > update_delay:
                 try:
-                    current_hull, message = next(gen)
+                    current_data, message = next(gen)
                 except StopIteration:
                     finished = True
                     animating = False
                 last_update = now
                 
-        # 1. Rysuj wszystkie niepołączone jeszcze punkty
-        for p in points:
-            pygame.draw.circle(screen, GRAY, p, 5)
+        if mode == "MENU":
+            title = title_font.render("Wizualizacja Algorytmów - Krasnoludki 2026", True, BLACK)
+            screen.blit(title, (WIDTH//2 - title.get_width()//2, 150))
             
-        # 2. Rysuj to co się dzieje obecnie
-        if len(current_hull) > 0:
-            p0 = current_hull[0]
-            pygame.draw.circle(screen, GREEN, p0, 8) # Wyróżnij p0
+            opt1 = font.render("1 - Patrol Księcia (Algorytm Grahama)", True, BLACK)
+            screen.blit(opt1, (WIDTH//2 - opt1.get_width()//2, 250))
             
-            if "Posortowano" in message:
-                # Pokazujemy powiązania kątowe do p0
-                for idx, p in enumerate(current_hull[1:]):
-                    pygame.draw.line(screen, LIGHT_BLUE, p0, p, 1)
-                    txt = font.render(str(idx+1), True, BLUE)
-                    screen.blit(txt, (p[0]+10, p[1]-10))
-            else:
-                # Normalne rysowanie aktualnego stanu stosu
-                if len(current_hull) > 1:
-                    pygame.draw.lines(screen, BLUE, False, current_hull, 3)
-                    
-                for p in current_hull:
-                    pygame.draw.circle(screen, RED, p, 6)
+            opt2 = font.render("2 - Przydział Krasnoludków (MCMF)", True, BLACK)
+            screen.blit(opt2, (WIDTH//2 - opt2.get_width()//2, 300))
+            
+            info = font.render("Wciśnij 1 lub 2 aby rozpocząć", True, GRAY)
+            screen.blit(info, (WIDTH//2 - info.get_width()//2, 450))
+            
+        elif mode == "GRAHAM":
+            for p in points:
+                pygame.draw.circle(screen, GRAY, p, 5)
                 
-                # Zaznacz najnowszy sprawdzany punkt, jeśli wystąpił skręt w prawo
-                if len(current_hull) > 1 and "skręt w prawo" in message:
-                    pygame.draw.line(screen, RED, current_hull[-2], current_hull[-1], 3)
-                    pygame.draw.circle(screen, BLACK, current_hull[-1], 8, 2)
+            if len(current_data) > 0:
+                p0 = current_data[0]
+                pygame.draw.circle(screen, GREEN, p0, 8)
+                
+                if "Posortowano" in message:
+                    for idx, p in enumerate(current_data[1:]):
+                        pygame.draw.line(screen, LIGHT_BLUE, p0, p, 1)
+                        txt = font.render(str(idx+1), True, BLUE)
+                        screen.blit(txt, (p[0]+10, p[1]-10))
+                else:
+                    if len(current_data) > 1:
+                        pygame.draw.lines(screen, BLUE, False, current_data, 3)
+                        
+                    for p in current_data:
+                        pygame.draw.circle(screen, RED, p, 6)
                     
-        # 3. Informacje tekstowe (UI)
-        title = title_font.render("Wizualizacja Algorytmu Grahama", True, BLACK)
-        screen.blit(title, (20, 20))
-        
-        msg_surface = font.render(message, True, BLACK)
-        screen.blit(msg_surface, (20, 60))
-        
-        info = font.render("SPACJA = Nowe punkty | STRZAŁKA W PRAWO = Kolejny krok", True, GRAY)
-        screen.blit(info, (20, HEIGHT - 40))
+                    if len(current_data) > 1 and "skręt w prawo" in message:
+                        pygame.draw.line(screen, RED, current_data[-2], current_data[-1], 3)
+                        pygame.draw.circle(screen, BLACK, current_data[-1], 8, 2)
+                        
+            title = title_font.render("Patrol Księcia (Algorytm Grahama)", True, BLACK)
+            screen.blit(title, (20, 20))
+            msg_surface = font.render(message, True, BLACK)
+            screen.blit(msg_surface, (20, 60))
+            info = font.render("SPACJA = Nowe | PRAWO = Krok | ESC = Menu", True, GRAY)
+            screen.blit(info, (20, HEIGHT - 40))
+            
+        elif mode == "MCMF":
+            for k_id, mx, my, cap in kopalnie:
+                pygame.draw.rect(screen, ORANGE, (mx-15, my-15, 30, 30))
+                cap_txt = font.render(f"{k_id} ({cap})", True, BLACK)
+                screen.blit(cap_txt, (mx-15, my-35))
+                
+            for k_id, kx, ky in krasnoludki:
+                pygame.draw.circle(screen, PURPLE, (kx, ky), 8)
+                txt = font.render(k_id, True, BLACK)
+                screen.blit(txt, (kx+10, ky-10))
+                
+            if current_data:
+                for k_id, m_id, cost in current_data:
+                    kx, ky = next((x, y) for kid, x, y in krasnoludki if kid == k_id)
+                    mx, my, _ = next((x, y, cap) for mid, x, y, cap in kopalnie if mid == m_id)
+                    pygame.draw.line(screen, BLUE, (kx, ky), (mx, my), 2)
+                    
+            title = title_font.render("Przydział Krasnoludków (MCMF)", True, BLACK)
+            screen.blit(title, (20, 20))
+            msg_surface = font.render(message, True, BLACK)
+            screen.blit(msg_surface, (20, 60))
+            info = font.render("SPACJA = Nowe | PRAWO = Krok | ESC = Menu", True, GRAY)
+            screen.blit(info, (20, HEIGHT - 40))
 
         pygame.display.flip()
         clock.tick(60)
