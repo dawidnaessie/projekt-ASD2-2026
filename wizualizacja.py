@@ -10,7 +10,7 @@ from src.patrol_ksiecia import orientacja, odleglosc_kwadrat
 from src.przydzial_krasnoludkow import zbuduj_i_rozwiaz_siec
 
 pygame.init()
-WIDTH, HEIGHT = 1000, 700
+WIDTH, HEIGHT = 1440, 900
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Wizualizacja Algorytmów - Krasnoludki 2026")
 
@@ -135,6 +135,18 @@ def main():
     
     last_update = pygame.time.get_ticks()
     update_delay = 500
+
+    try:
+        bg_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "tlo_startowe.png")
+        bg_image = pygame.image.load(bg_path)
+        bg_image = pygame.transform.smoothscale(bg_image, (WIDTH, HEIGHT))
+    except Exception as e:
+        print(f"Błąd ładowania tła: {e}")
+        bg_image = None
+
+    # Obszary przycisków na grafice dopasowane proporcjonalnie do rozmiaru okna
+    btn_graham_rect = pygame.Rect(int(WIDTH * 0.05), int(HEIGHT * 0.81), int(WIDTH * 0.28), int(HEIGHT * 0.15))
+    btn_mcmf_rect = pygame.Rect(int(WIDTH * 0.36), int(HEIGHT * 0.81), int(WIDTH * 0.28), int(HEIGHT * 0.15))
     
     while running:
         screen.fill(WHITE)
@@ -142,6 +154,25 @@ def main():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if mode == "MENU" and event.button == 1:
+                    if btn_graham_rect.collidepoint(event.pos):
+                        mode = "GRAHAM"
+                        points = [(mx, my) for mid, mx, my, cap in shared_kopalnie]
+                        gen = graham_scan_generator(points)
+                        current_data = [] 
+                        message = "Inicjalizacja środowiska..."
+                        animating = True
+                        finished = False
+                    elif btn_mcmf_rect.collidepoint(event.pos):
+                        mode = "MCMF"
+                        krasnoludki = shared_krasnoludki
+                        kopalnie = shared_kopalnie
+                        gen = mcmf_generator(krasnoludki, kopalnie)
+                        current_state = {"step": "init", "przydzialy": []}
+                        message = "Inicjalizacja środowiska..."
+                        animating = True
+                        finished = False
             elif event.type == pygame.KEYDOWN:
                 if mode == "MENU":
                     # Zmiana ilości Krasnoludków (Strzałki GÓRA/DÓŁ)
@@ -158,7 +189,6 @@ def main():
                         mode = "GRAHAM"
                         points = [(mx, my) for mid, mx, my, cap in shared_kopalnie]
                         gen = graham_scan_generator(points)
-                        # Dla Grahama używamy starych zmiennych
                         current_data = [] 
                         message = "Inicjalizacja środowiska..."
                         animating = True
@@ -211,27 +241,36 @@ def main():
                 last_update = now
                 
         if mode == "MENU":
-            title = title_font.render("Wizualizacja Algorytmów - Krasnoludki 2026", True, BLACK)
-            screen.blit(title, (WIDTH//2 - title.get_width()//2, 80))
+            if bg_image:
+                screen.blit(bg_image, (0, 0))
+            else:
+                title = title_font.render("Wizualizacja Algorytmów - Krasnoludki 2026", True, BLACK)
+                screen.blit(title, (WIDTH//2 - title.get_width()//2, 80))
             
-            # Wskaźniki ilości
-            kras_txt = font.render(f"Krasnoludki: {num_k} (Strzałka GÓRA/DÓŁ aby zmienić)", True, PURPLE)
-            screen.blit(kras_txt, (WIDTH//2 - kras_txt.get_width()//2, 150))
+            # Wskaźniki ilości wypisywane na kamiennej tablicy z tła
+            DARK_TEXT = (40, 30, 20)
+            base_y = int(HEIGHT * 0.25)
             
-            kop_txt = font.render(f"Kopalnie: {num_m} (W/S aby zmienić)", True, ORANGE)
-            screen.blit(kop_txt, (WIDTH//2 - kop_txt.get_width()//2, 190))
+            font_dla_tabliczki = pygame.font.SysFont("arial", 16, bold = True)
+
+            kras_txt = font_dla_tabliczki.render(f"Krasnoludki: {num_k} (Strzałka GÓRA/DÓŁ)", True, DARK_TEXT)
+            screen.blit(kras_txt, (WIDTH//2 - kras_txt.get_width()//2, base_y))
             
-            opt_r = font.render("R - Przelosuj pozycje i pojemności", True, BLUE)
-            screen.blit(opt_r, (WIDTH//2 - opt_r.get_width()//2, 230))
+            kop_txt = font_dla_tabliczki.render(f"Kopalnie: {num_m} (W/S)", True, DARK_TEXT)
+            screen.blit(kop_txt, (WIDTH//2 - kop_txt.get_width()//2, base_y + 35))
             
-            opt1 = font.render("1 - Patrol Księcia wokół kopalni (Algorytm Grahama)", True, BLACK)
-            screen.blit(opt1, (WIDTH//2 - opt1.get_width()//2, 300))
+            opt_r = font_dla_tabliczki.render("R - Przelosuj pozycje i pojemności", True, DARK_TEXT)
+            screen.blit(opt_r, (WIDTH//2 - opt_r.get_width()//2, base_y + 75))
             
-            opt2 = font.render("2 - Przydział Krasnoludków do kopalni (MCMF)", True, BLACK)
-            screen.blit(opt2, (WIDTH//2 - opt2.get_width()//2, 350))
-            
-            info = font.render("Wciśnij 1 lub 2 aby rozpocząć", True, GRAY)
-            screen.blit(info, (WIDTH//2 - info.get_width()//2, 480))
+            if not bg_image:
+                opt1 = font.render("1 - Patrol Księcia wokół kopalni (Algorytm Grahama)", True, BLACK)
+                screen.blit(opt1, (WIDTH//2 - opt1.get_width()//2, 300))
+                
+                opt2 = font.render("2 - Przydział Krasnoludków do kopalni (MCMF)", True, BLACK)
+                screen.blit(opt2, (WIDTH//2 - opt2.get_width()//2, 350))
+                
+                info = font.render("Wciśnij 1 lub 2 aby rozpocząć", True, GRAY)
+                screen.blit(info, (WIDTH//2 - info.get_width()//2, 480))
             
         elif mode == "GRAHAM":
             # Rysujemy kopalnie jako kwadraty, żeby było widać, że to te same obiekty co w MCMF
