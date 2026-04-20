@@ -126,11 +126,11 @@ def main():
     kopalnie = []
     
     gen = None
-    current_state = {"step": "init", "przydzialy": []}
-    message = ""
+    history = []
+    history_idx = 0
+    is_auto = False
     
     running = True
-    animating = False
     finished = False
     
     last_update = pygame.time.get_ticks()
@@ -159,19 +159,21 @@ def main():
                     if btn_graham_rect.collidepoint(event.pos):
                         mode = "GRAHAM"
                         points = [(mx, my) for mid, mx, my, cap in shared_kopalnie]
-                        gen = graham_scan_generator(points)
-                        current_data = [] 
-                        message = "Inicjalizacja środowiska..."
-                        animating = True
+                        history = list(graham_scan_generator(points))
+                        if not history:
+                            history = [([], "")]
+                        history_idx = 0
+                        is_auto = False
                         finished = False
                     elif btn_mcmf_rect.collidepoint(event.pos):
                         mode = "MCMF"
                         krasnoludki = shared_krasnoludki
                         kopalnie = shared_kopalnie
-                        gen = mcmf_generator(krasnoludki, kopalnie)
-                        current_state = {"step": "init", "przydzialy": []}
-                        message = "Inicjalizacja środowiska..."
-                        animating = True
+                        history = list(mcmf_generator(krasnoludki, kopalnie))
+                        if not history:
+                            history = [({"step": "init", "przydzialy": []}, "")]
+                        history_idx = 0
+                        is_auto = False
                         finished = False
             elif event.type == pygame.KEYDOWN:
                 if mode == "MENU":
@@ -188,56 +190,72 @@ def main():
                     elif event.key == pygame.K_1:
                         mode = "GRAHAM"
                         points = [(mx, my) for mid, mx, my, cap in shared_kopalnie]
-                        gen = graham_scan_generator(points)
-                        current_data = [] 
-                        message = "Inicjalizacja środowiska..."
-                        animating = True
+                        history = list(graham_scan_generator(points))
+                        if not history:
+                            history = [([], "")]
+                        history_idx = 0
+                        is_auto = False
                         finished = False
                         
                     elif event.key == pygame.K_2:
                         mode = "MCMF"
                         krasnoludki = shared_krasnoludki
                         kopalnie = shared_kopalnie
-                        gen = mcmf_generator(krasnoludki, kopalnie)
-                        current_state = {"step": "init", "przydzialy": []}
-                        message = "Inicjalizacja środowiska..."
-                        animating = True
+                        history = list(mcmf_generator(krasnoludki, kopalnie))
+                        if not history:
+                            history = [({"step": "init", "przydzialy": []}, "")]
+                        history_idx = 0
+                        is_auto = False
                         finished = False
                 else:
                     if event.key == pygame.K_ESCAPE:
                         mode = "MENU"
-                        animating = False
+                        is_auto = False
                     elif event.key == pygame.K_SPACE:
                         if mode == "GRAHAM":
-                            gen = graham_scan_generator(points)
-                            current_data = []
+                            history = list(graham_scan_generator(points))
                         elif mode == "MCMF":
-                            gen = mcmf_generator(krasnoludki, kopalnie)
-                            current_state = {"step": "init", "przydzialy": []}
-                        message = "Inicjalizacja środowiska..."
-                        animating = True
+                            history = list(mcmf_generator(krasnoludki, kopalnie))
+                        if not history:
+                            history = [([], "")]
+                        history_idx = 0
+                        is_auto = False
                         finished = False
-                    elif event.key == pygame.K_RIGHT and not finished and animating:
-                        try:
-                            if mode == "GRAHAM":
-                                current_data, message = next(gen)
-                            else:
-                                current_state, message = next(gen)
-                        except StopIteration:
+                    elif event.key == pygame.K_r:
+                        shared_krasnoludki, shared_kopalnie = generate_krasnoludki_kopalnie(num_k, num_m)
+                        if mode == "GRAHAM":
+                            points = [(mx, my) for mid, mx, my, cap in shared_kopalnie]
+                            history = list(graham_scan_generator(points))
+                        elif mode == "MCMF":
+                            krasnoludki = shared_krasnoludki
+                            kopalnie = shared_kopalnie
+                            history = list(mcmf_generator(krasnoludki, kopalnie))
+                        if not history:
+                            history = [([], "")]
+                        history_idx = 0
+                        is_auto = False
+                        finished = False
+                    elif event.key == pygame.K_a:
+                        is_auto = not is_auto
+                    elif event.key == pygame.K_LEFT:
+                        is_auto = False
+                        if history_idx > 0:
+                            history_idx -= 1
+                    elif event.key == pygame.K_RIGHT:
+                        is_auto = False
+                        if history_idx < len(history) - 1:
+                            history_idx += 1
+                        else:
                             finished = True
-                            animating = False
 
-        if animating and not finished:
+        if is_auto and not finished:
             now = pygame.time.get_ticks()
             if now - last_update > update_delay:
-                try:
-                    if mode == "GRAHAM":
-                        current_data, message = next(gen)
-                    else:
-                        current_state, message = next(gen)
-                except StopIteration:
+                if history_idx < len(history) - 1:
+                    history_idx += 1
+                else:
                     finished = True
-                    animating = False
+                    is_auto = False
                 last_update = now
                 
         if mode == "MENU":
@@ -273,6 +291,11 @@ def main():
                 screen.blit(info, (WIDTH//2 - info.get_width()//2, 480))
             
         elif mode == "GRAHAM":
+            if history:
+                current_data, message = history[history_idx]
+            else:
+                current_data, message = [], ""
+                
             # Rysujemy kopalnie jako kwadraty, żeby było widać, że to te same obiekty co w MCMF
             for p in points:
                 pygame.draw.rect(screen, ORANGE, (p[0]-15, p[1]-15, 30, 30))
@@ -299,11 +322,17 @@ def main():
                         
             title = title_font.render("Patrol Księcia (Algorytm Grahama)", True, BLACK)
             screen.blit(title, (20, 20))
-            msg_surface = font.render(message, True, BLACK)
-            screen.blit(msg_surface, (20, 60))
-            info = font.render("SPACJA = Powtórz animację | PRAWO = Krok | ESC = Menu", True, GRAY)
+            if history:
+                msg_surface = font.render(f"Krok: {history_idx + 1} / {len(history)}", True, BLACK)
+                screen.blit(msg_surface, (20, 60))
+            info = font.render("R = Przelosuj | A = Auto (Wł/Wył) | LEWO/PRAWO = Krok | SPACJA = Od nowa | ESC = Menu", True, GRAY)
             screen.blit(info, (20, HEIGHT - 40))
         elif mode == "MCMF":
+            if history:
+                current_state, message = history[history_idx]
+            else:
+                current_state, message = {"step": "init", "przydzialy": []}, ""
+                
             source_pos = (50, HEIGHT // 2)
             sink_pos = (WIDTH - 50, HEIGHT // 2)
             step = current_state["step"]
@@ -369,9 +398,10 @@ def main():
 
             title = title_font.render("Przydział Krasnoludków (MCMF)", True, BLACK)
             screen.blit(title, (20, 20))
-            msg_surface = font.render(message, True, BLACK)
-            screen.blit(msg_surface, (20, 60))
-            info = font.render("SPACJA = Powtórz animację | PRAWO = Krok | ESC = Menu", True, GRAY)
+            if history:
+                msg_surface = font.render(f"Krok: {history_idx + 1} / {len(history)}", True, BLACK)
+                screen.blit(msg_surface, (20, 60))
+            info = font.render("R = Przelosuj | A = Auto (Wł/Wył) | LEWO/PRAWO = Krok | SPACJA = Od nowa | ESC = Menu", True, GRAY)
             screen.blit(info, (20, HEIGHT - 40))
 
         pygame.display.flip()
