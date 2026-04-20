@@ -1,5 +1,6 @@
 import os
 from src.przydzial_krasnoludkow import zbuduj_i_rozwiaz_siec
+from src.patrol_ksiecia import uruchom_modul as uruchom_modul_geometryczny
 
 def wczytaj_krasnoludki(sciezka):
     krasnoludki = []
@@ -45,5 +46,29 @@ def testuj_modul_logistyczny():
     except FileNotFoundError as e:
         print(f"Błąd! Nie znaleziono pliku: {e}")
 
+def testuj_modul_geometryczny():
+    print("="*50)
+    print(" START TESTU: Moduł Geometryczny (Mateusz Bogacki) ")
+    print("="*50)
+    
+    sciezka_kopalnie = os.path.join('data', 'kopalnie.txt')
+    
+    try:
+        kopalnie = wczytaj_kopalnie(sciezka_kopalnie)
+        
+        print(f"Wczytano {len(kopalnie)} kopalni.\n")
+        
+        trasa = uruchom_modul_geometryczny(kopalnie)
+        
+        print("--- WYNIKI ---")
+        print("Trasa Patrolu Księcia (kolejność wierzchołków otoczki wypukłej):")
+        for pkt in trasa:
+            print(f" -> {pkt}")
+            
+    except FileNotFoundError as e:
+        print(f"Błąd! Nie znaleziono pliku: {e}")
+
 if __name__ == "__main__":
     testuj_modul_logistyczny()
+    print("\n" + "*"*50 + "\n")
+    testuj_modul_geometryczny()
