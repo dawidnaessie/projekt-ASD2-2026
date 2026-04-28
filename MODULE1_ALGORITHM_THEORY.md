@@ -16,9 +16,13 @@
 
 ### GŁÓWNA PĘTLA:
 **Dopóki** zbiór `E` nie jest pusty *(czyli dopóki mamy nieprzydzielonych krasnali)*:
+
 **Początek**
+
 &nbsp;&nbsp;&nbsp;&nbsp;**5.** Wybierz wierzchołek `k ∈ E` (Źródło) oraz `l ∈ D` (Ujście).
+
 &nbsp;&nbsp;&nbsp;&nbsp;**6.** Znajdź najkrótsze odległości `d(j)` ze Źródła do wszystkich innych węzłów w sieci rezydualnej, używając zredukowanych kosztów.
+
 &nbsp;&nbsp;&nbsp;&nbsp;**7.** Niech `P` oznacza najkrótszą ścieżkę od `k` do `l`.
 
 > 🚨 **KLUCZOWA RÓŻNICA W NASZEJ IMPLEMENTACJI:**
@@ -27,7 +31,11 @@
 > *Komentarz inżynierski:* Oryginalny algorytm zakłada wykorzystanie algorytmu Dijkstry (krok 6), który wymaga nieujemnych wag, dlatego Ahuja dodaje utrzymywanie tzw. potencjałów wierzchołków (π) w kroku 8. W naszej implementacji zastąpiono algorytm Dijkstry silnikiem **SPFA (Shortest Path Faster Algorithm)**, który natywnie obsługuje ujemne krawędzie powrotne. Ponieważ udowodniono matematycznie (patrz plik PDF z dowodem), że topologia naszego grafu wyklucza powstawanie ujemnych cykli, **krok 8 został całkowicie usunięty z kodu**, co oszczędza pamięć i redukuje złożoność czasową.*
 
 &nbsp;&nbsp;&nbsp;&nbsp;**9.** Oblicz `δ` = maksimum przepływu, jakie można wepchnąć w ścieżkę `P` 
+
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;*(nasze szukanie "wąskiego gardła" / w kodzie zmienna `push`).*
+
 &nbsp;&nbsp;&nbsp;&nbsp;**10.** Przepchnij `δ` jednostek przepływu wzdłuż ścieżki `P`.
+
 &nbsp;&nbsp;&nbsp;&nbsp;**11.** Zaktualizuj przepływy (`x`), sieć rezydualną, zbiory `E` i `D` oraz zredukowane koszty *(nasza aktualizacja krawędzi w przód i krawędzi powrotnych o przeciwnym znaku)*.
+
 **Koniec**
