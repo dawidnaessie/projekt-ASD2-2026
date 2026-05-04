@@ -7,8 +7,12 @@ def wczytaj_krasnoludki(sciezka):
     with open(sciezka, 'r', encoding='utf-8') as f:
         for linia in f:
             dane = linia.strip().split()
-            if len(dane) == 3:
-                krasnoludki.append((dane[0], int(dane[1]), int(dane[2])))
+            if len(dane) == 4:
+                preferencje = dane[3].split(',') # Robi z "M1,M2" listę ["M1", "M2"]
+                krasnoludki.append((dane[0], int(dane[1]), int(dane[2]), preferencje))
+            # Awaryjnie: Jeśli ktoś ułoży stary plik z 3 elementami, zakłada że lubi wszystkie
+            elif len(dane) == 3:
+                krasnoludki.append((dane[0], int(dane[1]), int(dane[2]), ["ALL"]))
     return krasnoludki
 
 def wczytaj_kopalnie(sciezka):

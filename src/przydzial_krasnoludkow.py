@@ -105,7 +105,7 @@ class MinCostMaxFlow:
 
         return int(total_flow), int(total_cost)
 
-def zbuduj_i_rozwiaz_siec(dane_krasnoludki: List[Tuple[str, int, int]], 
+def zbuduj_i_rozwiaz_siec(dane_krasnoludki: List[Tuple[str, int, int, List[str]]], 
                           dane_kopalnie: List[Tuple[str, int, int, int]]) -> Tuple[int, int, List[Tuple[str, str, int]]]:
     """
     Funkcja budująca 4-etapowy model asymetryczny i uruchamiająca MCMF.
@@ -138,11 +138,12 @@ def zbuduj_i_rozwiaz_siec(dane_krasnoludki: List[Tuple[str, int, int]],
         mcmf.add_edge(source, i, cap=1, cost=0)
 
     # 2. Krasnoludki -> Kopalnie (Pojemność 1, Koszt = Odległość)
-    for i, (k_id, kx, ky) in enumerate(dane_krasnoludki, start=1):
+    for i, (k_id, kx, ky, preferencje) in enumerate(dane_krasnoludki, start=1):
         for j, (m_id, mx, my, m_cap) in enumerate(dane_kopalnie, start=n + 1):
             # Obliczanie odległości euklidesowej (zaokrąglonej do int dla jednorodności wag)
-            dystans = int(math.hypot(kx - mx, ky - my))
-            mcmf.add_edge(i, j, cap=1, cost=dystans)
+            if "ALL" in preferencje or m_id in preferencje:
+                dystans = int(math.hypot(kx - mx, ky - my))
+                mcmf.add_edge(i, j, cap=1, cost=dystans)
 
     # 3. Kopalnie -> Ujście (Pojemność = wydajność, Koszt 0)
     for j, (m_id, mx, my, m_cap) in enumerate(dane_kopalnie, start=n + 1):
@@ -153,7 +154,7 @@ def zbuduj_i_rozwiaz_siec(dane_krasnoludki: List[Tuple[str, int, int]],
     
     # Odzyskiwanie wyników (kto poszedł do jakiej kopalni)
     przydzialy = []
-    for i, (k_id, _, _) in enumerate(dane_krasnoludki, start=1):
+    for i, (k_id, _, _, _) in enumerate(dane_krasnoludki, start=1):
         for edge in mcmf.graph[i]:
             if edge.flow > 0: # Jeśli krasnal poszedł tą krawędzią (przepływ > 0)
                 idx_kopalni = edge.to - n - 1
