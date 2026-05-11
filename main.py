@@ -1,6 +1,7 @@
 import os
 from src.przydzial_krasnoludkow import zbuduj_i_rozwiaz_siec
 from src.patrol_ksiecia import uruchom_modul as uruchom_modul_geometryczny
+from src.dekametrowcy import uruchom_modul as uruchom_modul_obronny, _wczytaj_glosnosci
 
 def wczytaj_krasnoludki(sciezka):
     krasnoludki = []
@@ -72,7 +73,37 @@ def testuj_modul_geometryczny():
     except FileNotFoundError as e:
         print(f"Błąd! Nie znaleziono pliku: {e}")
 
+
+def testuj_modul_obronny():
+    print("="*50)
+    print(" START TESTU: Moduł Obronny ([Twoje Imię i Nazwisko]) ")
+    print("="*50)
+    
+    sciezka_dekametrowcy = os.path.join('data', 'dekametrowcy.txt')
+    
+    try:
+        glosnosci = _wczytaj_glosnosci(sciezka_dekametrowcy)
+        print(f"Wczytano linię obrony: {len(glosnosci)} krasnoludków.\n")
+        
+        # Symulacja zapytań (ataków) - wpisane "z palca" w pliku main
+        zapytania = [(0, 2), (2, 5), (5, 7)]
+        
+        wyniki = uruchom_modul_obronny(glosnosci, zapytania)
+        
+        print("--- RAPORT OBRONNY ---")
+        for start, koniec, max_glosnosc in wyniki:
+            # Sprawdzenie czy nie ma błędu i czy wynik to liczba
+            if max_glosnosc != float('-inf'):
+                 print(f"Atak na przedział [{start}-{koniec}] -> Najgłośniejszy krasnal krzyczy {max_glosnosc} dB")
+            else:
+                 print(f"Atak na przedział [{start}-{koniec}] -> Brak dekametrowców na tym odcinku!")
+            
+    except Exception as e:
+         print(f"Błąd! Podczas działania modułu obronnego wystąpił problem: {e}")
+
 if __name__ == "__main__":
     testuj_modul_logistyczny()
     print("\n" + "*"*50 + "\n")
     testuj_modul_geometryczny()
+    print("\n" + "*"*50 + "\n")
+    testuj_modul_obronny()

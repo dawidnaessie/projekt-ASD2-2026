@@ -1,0 +1,8 @@
+Krasnal_1 45
+Krasnal_2 80
+Krasnal_3 25
+Krasnal_4 95
+Krasnal_5 30
+Krasnal_6 60
+Krasnal_7 15
+Krasnal_8 88
