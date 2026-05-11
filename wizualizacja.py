@@ -85,7 +85,7 @@ def graham_scan_generator(punkty):
 
 def generate_krasnoludki_kopalnie(num_k, num_m):
     padding = 80
-    krasnoludki = [(f"K{i}", random.randint(padding, WIDTH - padding), random.randint(padding, HEIGHT - padding)) for i in range(1, num_k + 1)]
+    krasnoludki = [(f"K{i}", random.randint(padding, WIDTH - padding), random.randint(padding, HEIGHT - padding), ["ALL"]) for i in range(1, num_k + 1)]
     kopalnie = [(f"M{i}", random.randint(padding, WIDTH - padding), random.randint(padding, HEIGHT - padding), random.randint(1, 4)) for i in range(1, num_m + 1)]
     return krasnoludki, kopalnie
 
@@ -332,74 +332,122 @@ def main():
                 current_state, message = history[history_idx]
             else:
                 current_state, message = {"step": "init", "przydzialy": []}, ""
-                
-            source_pos = (50, HEIGHT // 2)
-            sink_pos = (WIDTH - 50, HEIGHT // 2)
+
             step = current_state["step"]
             przydzialy = current_state["przydzialy"]
 
-            # Nowe, stonowane kolory specjalnie dla tego trybu
-            FAINT_GRAY = (230, 230, 230)
+            # Kolory
+            FAINT_GRAY  = (210, 210, 210)
             SOFT_ORANGE = (240, 160, 50)
-            DARK_SLATE = (70, 90, 110)
+            DARK_SLATE  = (70, 90, 110)
             STRONG_GREEN = (30, 180, 60)
-            TEXT_GRAY = (120, 120, 120)
+            LABEL_COL   = (60, 60, 200)
+            LABEL_FLOW  = (200, 60, 60)
 
-            # 1. Rysowanie Źródła i Ujścia
-            pygame.draw.circle(screen, GREEN, source_pos, 20)
-            txt_s = title_font.render("S", True, WHITE)
-            screen.blit(txt_s, (source_pos[0]-8, source_pos[1]-15))
-            
-            pygame.draw.circle(screen, RED, sink_pos, 20)
-            txt_t = title_font.render("T", True, WHITE)
-            screen.blit(txt_t, (sink_pos[0]-8, sink_pos[1]-15))
+            n = len(krasnoludki)
+            m = len(kopalnie)
 
-            # 2. Rysowanie sieci (Zależne od kroku algorytmu)
+            # --- Pozycje kolumnowe ---
+            col_s_x = int(WIDTH * 0.09)
+            col_k_x = int(WIDTH * 0.32)
+            col_m_x = int(WIDTH * 0.68)
+            col_t_x = int(WIDTH * 0.91)
+
+            source_pos = (col_s_x, HEIGHT // 2)
+            sink_pos   = (col_t_x, HEIGHT // 2)
+
+            def node_y(idx, total):
+                if total <= 1:
+                    return HEIGHT // 2
+                margin = int(HEIGHT * 0.14)
+                return margin + idx * (HEIGHT - 2 * margin) // (total - 1)
+
+            k_pos = {k_id: (col_k_x, node_y(i, n))
+                     for i, (k_id, *_) in enumerate(krasnoludki)}
+            m_pos = {m_id: (col_m_x, node_y(j, m))
+                     for j, (m_id, *_) in enumerate(kopalnie)}
+
+            # --- Pomocnik: strzałka z etykietą ---
+            def draw_arrow(start, end, color, width=2, label="", lcolor=LABEL_COL):
+                dx = end[0] - start[0]
+                dy = end[1] - start[1]
+                dist = max(1, (dx*dx + dy*dy) ** 0.5)
+                ux, uy = dx / dist, dy / dist
+                px, py = -uy, ux
+                # Skróć linię o promień węzła docelowego (16px)
+                tip   = (int(end[0] - ux * 16), int(end[1] - uy * 16))
+                start2= (int(start[0] + ux * 16), int(start[1] + uy * 16))
+                pygame.draw.line(screen, color, start2, tip, width)
+                # Grot
+                ar = 10
+                b  = (tip[0] - int(ux * ar), tip[1] - int(uy * ar))
+                p1 = (b[0] + int(px * ar * 0.5), b[1] + int(py * ar * 0.5))
+                p2 = (b[0] - int(px * ar * 0.5), b[1] - int(py * ar * 0.5))
+                pygame.draw.polygon(screen, color, [tip, p1, p2])
+                # Etykieta nad środkiem
+                if label:
+                    mx2 = (start[0] + end[0]) // 2
+                    my2 = (start[1] + end[1]) // 2
+                    # Odsunięcie prostopadłe (żeby nie nakrywało linii)
+                    off = 14
+                    lbl = font.render(label, True, lcolor)
+                    screen.blit(lbl, (mx2 - lbl.get_width()//2 + int(px*off),
+                                      my2 - lbl.get_height() - 4 + int(py*off)))
+
+            # === Krok 1: S -> Krasnoludki ===
             if step in ["source_edges", "mine_edges", "bipartite", "flow", "done"]:
-                # Blade linie od Źródła (S)
-                for k_id, kx, ky in krasnoludki:
-                    pygame.draw.line(screen, FAINT_GRAY, source_pos, (kx, ky), 1)
-                    
+                for k_id, kx, ky, prefs in krasnoludki:
+                    draw_arrow(source_pos, k_pos[k_id], FAINT_GRAY, 1, "cap:1")
+
+            # === Krok 2: Kopalnie -> T ===
             if step in ["mine_edges", "bipartite", "flow", "done"]:
-                # Linie do Ujścia (T) - ujednolicona, cieńsza grubość
-                for k_id, mx, my, cap in kopalnie:
-                    pygame.draw.line(screen, SOFT_ORANGE, (mx, my), sink_pos, 2) 
-                    
-                    # Napis "Cap" narysowany dyskretnym szarym kolorem bliżej kopalni (1/3 drogi)
-                    txt_cap = font.render(f"Cap: {cap}", True, TEXT_GRAY)
-                    cx = mx + (sink_pos[0] - mx) // 3
-                    cy = my + (sink_pos[1] - my) // 3
-                    screen.blit(txt_cap, (cx, cy))
+                for m_id, mx, my, cap in kopalnie:
+                    draw_arrow(m_pos[m_id], sink_pos, SOFT_ORANGE, 2, f"cap:{cap}")
 
-            if step in ["bipartite"]:
-                # Bardzo blada pajęczyna potencjalnych dróg
-                for k_id, kx, ky in krasnoludki:
-                    for mid, mx, my, cap in kopalnie:
-                        pygame.draw.line(screen, FAINT_GRAY, (kx, ky), (mx, my), 1)
+            # === Krok 3: Krasnoludki -> Kopalnie (bipartite) ===
+            if step in ["bipartite", "flow", "done"]:
+                for k_id, kx, ky, prefs in krasnoludki:
+                    for m_id, mx, my, cap in kopalnie:
+                        dist = int(((kx - mx)**2 + (ky - my)**2) ** 0.5)
+                        draw_arrow(k_pos[k_id], m_pos[m_id], FAINT_GRAY, 1)
 
-            # Rysowanie kopalń (Nieco mniejsze kwadraty)
-            for k_id, mx, my, cap in kopalnie:
-                pygame.draw.rect(screen, SOFT_ORANGE, (mx-12, my-12, 24, 24))
-                cap_txt = font.render(f"{k_id}", True, BLACK)
-                screen.blit(cap_txt, (mx-10, my-32))
-                
-            # Rysowanie krasnoludków (Eleganckie, ciemno-stalowe mniejsze kropki)
-            for k_id, kx, ky in krasnoludki:
-                pygame.draw.circle(screen, DARK_SLATE, (kx, ky), 6)
-                txt = font.render(k_id, True, BLACK)
-                screen.blit(txt, (kx-8, ky-26))
-                
-            # Aktywne przydziały (Wynik MCMF - gruby, mocny zielony kolor)
-            if przydzialy:
-                for k_id, m_id, cost in przydzialy:
-                    kx, ky = next((x, y) for kid, x, y in krasnoludki if kid == k_id)
-                    mx, my, _ = next((x, y, cap) for mid, x, y, cap in kopalnie if mid == m_id)
-                    pygame.draw.line(screen, STRONG_GREEN, (kx, ky), (mx, my), 3)
+            # === Aktywne przydziały (wynik MCMF) ===
+            for k_id, m_id, cost in przydzialy:
+                if k_id in k_pos and m_id in m_pos:
+                    draw_arrow(k_pos[k_id], m_pos[m_id], STRONG_GREEN, 3,
+                               f"w:{cost}", lcolor=LABEL_FLOW)
 
+            # === Węzły (rysowane NA WIERZCHU krawędzi) ===
+            # Źródło S
+            pygame.draw.circle(screen, GREEN, source_pos, 22)
+            ts = title_font.render("S", True, WHITE)
+            screen.blit(ts, (source_pos[0] - ts.get_width()//2, source_pos[1] - ts.get_height()//2))
+
+            # Ujście T
+            pygame.draw.circle(screen, RED, sink_pos, 22)
+            tt = title_font.render("T", True, WHITE)
+            screen.blit(tt, (sink_pos[0] - tt.get_width()//2, sink_pos[1] - tt.get_height()//2))
+
+            # Krasnoludki
+            for k_id, kx, ky, prefs in krasnoludki:
+                pos = k_pos[k_id]
+                pygame.draw.circle(screen, DARK_SLATE, pos, 16)
+                tk = font.render(k_id, True, WHITE)
+                screen.blit(tk, (pos[0] - tk.get_width()//2, pos[1] - tk.get_height()//2))
+
+            # Kopalnie
+            for m_id, mx, my, cap in kopalnie:
+                pos = m_pos[m_id]
+                pygame.draw.rect(screen, SOFT_ORANGE, (pos[0]-16, pos[1]-16, 32, 32))
+                pygame.draw.rect(screen, BLACK, (pos[0]-16, pos[1]-16, 32, 32), 2)
+                tm = font.render(m_id, True, BLACK)
+                screen.blit(tm, (pos[0] - tm.get_width()//2, pos[1] - tm.get_height()//2))
+
+            # === UI ===
             title = title_font.render("Przydział Krasnoludków (MCMF)", True, BLACK)
             screen.blit(title, (20, 20))
             if history:
-                msg_surface = font.render(f"Krok: {history_idx + 1} / {len(history)}", True, BLACK)
+                msg_surface = font.render(f"Krok {history_idx + 1}/{len(history)}: {message}", True, DARK_SLATE)
                 screen.blit(msg_surface, (20, 60))
             info = font.render("R = Przelosuj | A = Auto (Wł/Wył) | LEWO/PRAWO = Krok | SPACJA = Od nowa | ESC = Menu", True, GRAY)
             screen.blit(info, (20, HEIGHT - 40))

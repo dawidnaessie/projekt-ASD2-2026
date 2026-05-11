@@ -118,7 +118,7 @@ def _wczytaj_testowe(sciezka: str) -> List[Tuple[str, int, int, int]]:
     return kopalnie
 
 if __name__ == "__main__":
-    sciezka_dane = os.path.join(os.path.dirname(__file__), '..', 'data', 'kopalnie.txt')
+    sciezka_dane = os.path.join(os.path.dirname(__file__), '..', 'data', 'kopalnie1.txt')
     try:
         kopalnie_test = _wczytaj_testowe(sciezka_dane)
         print("=== TEST MODUŁU GEOMETRYCZNEGO ===")
