@@ -8,6 +8,7 @@ from functools import cmp_to_key
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from src.patrol_ksiecia import orientacja, odleglosc_kwadrat
 from src.przydzial_krasnoludkow import zbuduj_i_rozwiaz_siec
+from src.dekametrowcy import uruchom_modul as dekametrowcy_rmq, _wczytaj_glosnosci
 
 pygame.init()
 WIDTH, HEIGHT = 1440, 900
@@ -112,6 +113,22 @@ def mcmf_generator(krasnoludki, kopalnie):
         
     yield {"step": "done", "przydzialy": current_przydzialy}, f"Zakończono! Znalazło pracę: {flow} krasnali, Koszt całkowity: {cost}"
 
+def dekametrowcy_generator(glosnosci, zapytania):
+    """Generator kroków wizualizacji Segment Tree RMQ."""
+    n = len(glosnosci)
+    # Krok 1 – pokaż surowe dane
+    yield {"phase": "data", "ql": -1, "qr": -1, "max_idx": -1, "active": []}, "Krok 1: Tablica głośności dekametrowców"
+    # Budowa drzewa krok po kroku (pokaż kolejne poziomy)
+    yield {"phase": "tree", "ql": -1, "qr": -1, "max_idx": -1, "active": []}, "Krok 2: Budowanie Drzewa Przedziałowego (Segment Tree)"
+    # Zapytania
+    wyniki = dekametrowcy_rmq(glosnosci, zapytania)
+    for (ql, qr), (bs, be, max_val) in zip(zapytania, wyniki):
+        active = list(range(bs, be + 1))
+        max_idx = glosnosci.index(max_val, bs, be + 1) if max_val in glosnosci[bs:be+1] else -1
+        yield {"phase": "query", "ql": bs, "qr": be, "max_idx": max_idx, "active": active}, \
+              f"Zapytanie [{bs}..{be}]: maks. głośność = {max_val} dB (Krasnal_{max_idx+1})"
+    yield {"phase": "done", "ql": -1, "qr": -1, "max_idx": -1, "active": []}, "Zakończono wszystkie zapytania RMQ!"
+
 def main():
     clock = pygame.time.Clock()
     mode = "MENU"
@@ -124,7 +141,9 @@ def main():
     points = []
     krasnoludki = []
     kopalnie = []
-    
+    dek_glosnosci = []
+    dek_zapytania = []
+
     gen = None
     history = []
     history_idx = 0
@@ -146,7 +165,8 @@ def main():
 
     # Obszary przycisków na grafice dopasowane proporcjonalnie do rozmiaru okna
     btn_graham_rect = pygame.Rect(int(WIDTH * 0.05), int(HEIGHT * 0.81), int(WIDTH * 0.28), int(HEIGHT * 0.15))
-    btn_mcmf_rect = pygame.Rect(int(WIDTH * 0.36), int(HEIGHT * 0.81), int(WIDTH * 0.28), int(HEIGHT * 0.15))
+    btn_mcmf_rect   = pygame.Rect(int(WIDTH * 0.36), int(HEIGHT * 0.81), int(WIDTH * 0.28), int(HEIGHT * 0.15))
+    btn_dek_rect    = pygame.Rect(int(WIDTH * 0.67), int(HEIGHT * 0.81), int(WIDTH * 0.28), int(HEIGHT * 0.15))
     
     while running:
         screen.fill(WHITE)
@@ -172,6 +192,16 @@ def main():
                         history = list(mcmf_generator(krasnoludki, kopalnie))
                         if not history:
                             history = [({"step": "init", "przydzialy": []}, "")]
+                        history_idx = 0
+                        is_auto = False
+                        finished = False
+                    elif btn_dek_rect.collidepoint(event.pos):
+                        mode = "DEKAMETROWCY"
+                        dek_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'dekametrowcy.txt')
+                        dek_glosnosci = _wczytaj_glosnosci(dek_path)
+                        n_dek = len(dek_glosnosci)
+                        dek_zapytania = [(0, n_dek//3), (n_dek//3, 2*n_dek//3), (2*n_dek//3, n_dek-1)]
+                        history = list(dekametrowcy_generator(dek_glosnosci, dek_zapytania))
                         history_idx = 0
                         is_auto = False
                         finished = False
@@ -204,6 +234,16 @@ def main():
                         history = list(mcmf_generator(krasnoludki, kopalnie))
                         if not history:
                             history = [({"step": "init", "przydzialy": []}, "")]
+                        history_idx = 0
+                        is_auto = False
+                        finished = False
+                    elif event.key == pygame.K_3:
+                        mode = "DEKAMETROWCY"
+                        dek_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'dekametrowcy.txt')
+                        dek_glosnosci = _wczytaj_glosnosci(dek_path)
+                        n_dek = len(dek_glosnosci)
+                        dek_zapytania = [(0, n_dek//3), (n_dek//3, 2*n_dek//3), (2*n_dek//3, n_dek-1)]
+                        history = list(dekametrowcy_generator(dek_glosnosci, dek_zapytania))
                         history_idx = 0
                         is_auto = False
                         finished = False
@@ -450,6 +490,91 @@ def main():
                 msg_surface = font.render(f"Krok {history_idx + 1}/{len(history)}: {message}", True, DARK_SLATE)
                 screen.blit(msg_surface, (20, 60))
             info = font.render("R = Przelosuj | A = Auto (Wł/Wył) | LEWO/PRAWO = Krok | SPACJA = Od nowa | ESC = Menu", True, GRAY)
+            screen.blit(info, (20, HEIGHT - 40))
+
+        elif mode == "DEKAMETROWCY":
+            if history:
+                current_state, message = history[history_idx]
+            else:
+                current_state, message = {"phase": "data", "ql": -1, "qr": -1, "max_idx": -1, "active": []}, ""
+
+            phase   = current_state["phase"]
+            ql      = current_state["ql"]
+            qr      = current_state["qr"]
+            max_idx = current_state["max_idx"]
+            active  = current_state["active"]
+
+            n_bars = len(dek_glosnosci)
+            if n_bars == 0:
+                n_bars = 1
+
+            # --- Layout słupków ---
+            margin_x = 80
+            margin_top = 110
+            margin_bot = 140
+            bar_area_w = WIDTH - 2 * margin_x
+            bar_w = max(20, bar_area_w // n_bars - 6)
+            spacing = (bar_area_w - bar_w * n_bars) // (n_bars + 1)
+            max_h = HEIGHT - margin_top - margin_bot
+            max_val_all = max(dek_glosnosci) if dek_glosnosci else 1
+
+            C_BAR     = (80, 120, 200)
+            C_ACTIVE  = (255, 200, 50)
+            C_MAX     = (220, 60, 60)
+            C_TREE    = (60, 160, 100)
+            C_LABEL   = (50, 50, 50)
+
+            # --- Rysowanie słupków ---
+            for i, val in enumerate(dek_glosnosci):
+                bx = margin_x + spacing + i * (bar_w + spacing)
+                bh = int(val / max_val_all * max_h)
+                by = HEIGHT - margin_bot - bh
+
+                if i == max_idx and phase in ("query", "done"):
+                    col = C_MAX
+                elif i in active and phase in ("query",):
+                    col = C_ACTIVE
+                else:
+                    col = C_BAR
+
+                pygame.draw.rect(screen, col, (bx, by, bar_w, bh), border_radius=4)
+                pygame.draw.rect(screen, BLACK, (bx, by, bar_w, bh), 1, border_radius=4)
+
+                # Wartość nad słupkiem
+                val_txt = font.render(str(val), True, C_LABEL)
+                screen.blit(val_txt, (bx + bar_w//2 - val_txt.get_width()//2, by - 22))
+
+                # Indeks pod słupkiem
+                idx_txt = font.render(f"D{i+1}", True, GRAY)
+                screen.blit(idx_txt, (bx + bar_w//2 - idx_txt.get_width()//2, HEIGHT - margin_bot + 6))
+
+            # --- Podświetlenie przedziału zapytania ---
+            if phase in ("query",) and ql >= 0 and qr >= 0:
+                bx_l = margin_x + spacing + ql * (bar_w + spacing) - 4
+                bx_r = margin_x + spacing + qr * (bar_w + spacing) + bar_w + 4
+                pygame.draw.rect(screen, C_ACTIVE,
+                                 (bx_l, margin_top - 10, bx_r - bx_l, HEIGHT - margin_bot - margin_top + 10),
+                                 3, border_radius=6)
+
+            # --- Segment Tree (pokazywany od Kroku 2) ---
+            if phase in ("tree", "query", "done") and dek_glosnosci:
+                from src.dekametrowcy import SegmentTreeRMQ
+                rmq = SegmentTreeRMQ(dek_glosnosci)
+                tree_top = margin_top - 5
+                levels = max_val_all.bit_length() if hasattr(max_val_all, 'bit_length') else 8
+                # Prosta wizualizacja: jedna linia tekstu z wartościami korzenia i dzieci
+                tree_y = 85
+                node_val = rmq.drzewo[1] if rmq.n > 0 else 0
+                tree_txt = font.render(f"Korzeń drzewa (maks. globalny): {int(node_val)} dB", True, C_TREE)
+                screen.blit(tree_txt, (1000, 50))
+
+            # --- UI ---
+            title = title_font.render("Dekametrowcy – Segment Tree RMQ", True, BLACK)
+            screen.blit(title, (20, 20))
+            if history:
+                msg_surface = font.render(f"Krok {history_idx + 1}/{len(history)}: {message}", True, (70, 90, 110))
+                screen.blit(msg_surface, (20, 58))
+            info = font.render("LEWO/PRAWO = Krok | A = Auto | ESC = Menu", True, GRAY)
             screen.blit(info, (20, HEIGHT - 40))
 
         pygame.display.flip()
