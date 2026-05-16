@@ -2,6 +2,7 @@ import os
 from src.przydzial_krasnoludkow import zbuduj_i_rozwiaz_siec
 from src.patrol_ksiecia import uruchom_modul as uruchom_modul_geometryczny
 from src.dekametrowcy import uruchom_modul as uruchom_modul_obronny, _wczytaj_glosnosci
+from src.elektroniczne_ksiegi import uruchom_modul as uruchom_modul_archiwalny, _wczytaj_ksiege as wczytaj_ksiege
 
 def wczytaj_krasnoludki(sciezka):
     krasnoludki = []
@@ -76,7 +77,7 @@ def testuj_modul_geometryczny():
 
 def testuj_modul_obronny():
     print("="*50)
-    print(" START TESTU: Moduł Obronny ([Twoje Imię i Nazwisko]) ")
+    print(" START TESTU: Moduł Obronny (Filip Herzog) ")
     print("="*50)
     
     sciezka_dekametrowcy = os.path.join('data', 'dekametrowcy.txt')
@@ -101,9 +102,38 @@ def testuj_modul_obronny():
     except Exception as e:
          print(f"Błąd! Podczas działania modułu obronnego wystąpił problem: {e}")
 
+def testuj_modul_archiwalny():
+    print("="*50)
+    print(" START TESTU: Moduł Archiwalny (Piotr Minda) ")
+    print("="*50)
+    
+    sciezka_ksiega = os.path.join('data', 'ksiega_wiedzy.txt')
+    szukana_fraza = "krasnoludki"
+    
+    try:
+        wiedza = wczytaj_ksiege(sciezka_ksiega)
+        print(f"Wczytano księgę o długości {len(wiedza)} znaków.\n")
+        
+        skompresowany_bin, wspolczynnik_kompresji, pozycje = uruchom_modul_archiwalny(wiedza, szukana_fraza)
+        
+        print("--- RAPORT ARCHIWALNY ---")
+        if skompresowany_bin:
+            print(f"Skompresowany tekst (fragment): {skompresowany_bin[:50]}...")
+        print(f"Współczynnik kompresji: {wspolczynnik_kompresji:.2%}")
+        
+        if pozycje:
+             print(f"Fraza '{szukana_fraza}' została znaleziona w {len(pozycje)} miejscach. Indeksy początkowe: {pozycje}")
+        else:
+             print(f"Fraza '{szukana_fraza}' nie została znaleziona.")
+            
+    except Exception as e:
+         print(f"Błąd! Podczas działania modułu archiwalnego wystąpił problem: {e}")
+
 if __name__ == "__main__":
     testuj_modul_logistyczny()
     print("\n" + "*"*50 + "\n")
     testuj_modul_geometryczny()
     print("\n" + "*"*50 + "\n")
     testuj_modul_obronny()
+    print("\n" + "*"*50 + "\n")
+    testuj_modul_archiwalny()
