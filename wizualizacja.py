@@ -15,6 +15,15 @@ WIDTH, HEIGHT = 1440, 900
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Wizualizacja Algorytmów - Krasnoludki 2026")
 
+# Ustawienie ikonki aplikacji
+try:
+    icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "app_icon.png")
+    icon_image = pygame.image.load(icon_path)
+    pygame.display.set_icon(icon_image)
+except Exception as e:
+    print(f"Błąd ładowania ikonki: {e}")
+
+
 # Kolory
 WHITE = (250, 250, 250)
 BLACK = (30, 30, 30)
