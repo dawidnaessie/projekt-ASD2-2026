@@ -168,9 +168,17 @@ def main():
         bg_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "tlo_startowe.png")
         bg_image = pygame.image.load(bg_path)
         bg_image = pygame.transform.smoothscale(bg_image, (WIDTH, HEIGHT))
+        
+        # Ładowanie ikonki kopalni
+        mine_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "kopalnia.png")
+        mine_raw = pygame.image.load(mine_path)
+        mine_image_graham = pygame.transform.smoothscale(mine_raw, (60, 60))
+        mine_image_mcmf = pygame.transform.smoothscale(mine_raw, (80, 80))
     except Exception as e:
-        print(f"Błąd ładowania tła: {e}")
+        print(f"Błąd ładowania tła lub kopalni: {e}")
         bg_image = None
+        mine_image_graham = None
+        mine_image_mcmf = None
 
     # Obszary przycisków na grafice dopasowane proporcjonalnie do rozmiaru okna
     btn_graham_rect = pygame.Rect(int(WIDTH * 0.05), int(HEIGHT * 0.81), int(WIDTH * 0.28), int(HEIGHT * 0.15))
@@ -345,9 +353,12 @@ def main():
             else:
                 current_data, message = [], ""
                 
-            # Rysujemy kopalnie jako kwadraty, żeby było widać, że to te same obiekty co w MCMF
+            # Rysujemy kopalnie
             for p in points:
-                pygame.draw.rect(screen, ORANGE, (p[0]-15, p[1]-15, 30, 30))
+                if mine_image_graham:
+                    screen.blit(mine_image_graham, (p[0]-30, p[1]-30))
+                else:
+                    pygame.draw.rect(screen, ORANGE, (p[0]-15, p[1]-15, 30, 30))
                 
             if len(current_data) > 0:
                 p0 = current_data[0]
@@ -357,7 +368,7 @@ def main():
                     for idx, p in enumerate(current_data[1:]):
                         pygame.draw.line(screen, LIGHT_BLUE, p0, p, 1)
                         txt = font.render(str(idx+1), True, BLUE)
-                        screen.blit(txt, (p[0]+15, p[1]-15))
+                        screen.blit(txt, (p[0]+32, p[1]-32))
                 else:
                     if len(current_data) > 1:
                         pygame.draw.lines(screen, BLUE, False, current_data, 3)
@@ -417,15 +428,15 @@ def main():
                      for j, (m_id, *_) in enumerate(kopalnie)}
 
             # --- Pomocnik: strzałka z etykietą ---
-            def draw_arrow(start, end, color, width=2, label="", lcolor=LABEL_COL):
+            def draw_arrow(start, end, color, width=2, label="", lcolor=LABEL_COL, start_rad=16, end_rad=16):
                 dx = end[0] - start[0]
                 dy = end[1] - start[1]
                 dist = max(1, (dx*dx + dy*dy) ** 0.5)
                 ux, uy = dx / dist, dy / dist
                 px, py = -uy, ux
-                # Skróć linię o promień węzła docelowego (16px)
-                tip   = (int(end[0] - ux * 16), int(end[1] - uy * 16))
-                start2= (int(start[0] + ux * 16), int(start[1] + uy * 16))
+                # Skróć linię o promień węzła startowego i docelowego
+                tip   = (int(end[0] - ux * end_rad), int(end[1] - uy * end_rad))
+                start2= (int(start[0] + ux * start_rad), int(start[1] + uy * start_rad))
                 pygame.draw.line(screen, color, start2, tip, width)
                 # Grot
                 ar = 10
@@ -446,25 +457,25 @@ def main():
             # === Krok 1: S -> Krasnoludki ===
             if step in ["source_edges", "mine_edges", "bipartite", "flow", "done"]:
                 for k_id, kx, ky, prefs in krasnoludki:
-                    draw_arrow(source_pos, k_pos[k_id], FAINT_GRAY, 1, "cap:1")
+                    draw_arrow(source_pos, k_pos[k_id], FAINT_GRAY, 1, "cap:1", start_rad=22, end_rad=16)
 
             # === Krok 2: Kopalnie -> T ===
             if step in ["mine_edges", "bipartite", "flow", "done"]:
                 for m_id, mx, my, cap in kopalnie:
-                    draw_arrow(m_pos[m_id], sink_pos, SOFT_ORANGE, 2, f"cap:{cap}")
+                    draw_arrow(m_pos[m_id], sink_pos, SOFT_ORANGE, 2, f"cap:{cap}", start_rad=40, end_rad=22)
 
             # === Krok 3: Krasnoludki -> Kopalnie (bipartite) ===
             if step in ["bipartite", "flow", "done"]:
                 for k_id, kx, ky, prefs in krasnoludki:
                     for m_id, mx, my, cap in kopalnie:
                         dist = int(((kx - mx)**2 + (ky - my)**2) ** 0.5)
-                        draw_arrow(k_pos[k_id], m_pos[m_id], FAINT_GRAY, 1)
+                        draw_arrow(k_pos[k_id], m_pos[m_id], FAINT_GRAY, 1, start_rad=16, end_rad=40)
 
             # === Aktywne przydziały (wynik MCMF) ===
             for k_id, m_id, cost in przydzialy:
                 if k_id in k_pos and m_id in m_pos:
                     draw_arrow(k_pos[k_id], m_pos[m_id], STRONG_GREEN, 3,
-                               f"w:{cost}", lcolor=LABEL_FLOW)
+                               f"w:{cost}", lcolor=LABEL_FLOW, start_rad=16, end_rad=40)
 
             # === Węzły (rysowane NA WIERZCHU krawędzi) ===
             # Źródło S
@@ -487,10 +498,13 @@ def main():
             # Kopalnie
             for m_id, mx, my, cap in kopalnie:
                 pos = m_pos[m_id]
-                pygame.draw.rect(screen, SOFT_ORANGE, (pos[0]-16, pos[1]-16, 32, 32))
-                pygame.draw.rect(screen, BLACK, (pos[0]-16, pos[1]-16, 32, 32), 2)
+                if mine_image_mcmf:
+                    screen.blit(mine_image_mcmf, (pos[0]-40, pos[1]-40))
+                else:
+                    pygame.draw.rect(screen, SOFT_ORANGE, (pos[0]-16, pos[1]-16, 32, 32))
+                    pygame.draw.rect(screen, BLACK, (pos[0]-16, pos[1]-16, 32, 32), 2)
                 tm = font.render(m_id, True, BLACK)
-                screen.blit(tm, (pos[0] - tm.get_width()//2, pos[1] - tm.get_height()//2))
+                screen.blit(tm, (pos[0] - tm.get_width()//2, pos[1] + 42))
 
             # === UI ===
             title = title_font.render("Przydział Krasnoludków (MCMF)", True, BLACK)
