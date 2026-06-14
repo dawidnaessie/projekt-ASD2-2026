@@ -20,7 +20,7 @@ def math_coords(p):
 def graham_scan_generator(punkty):
     """Generator kroków algorytmu Grahama do wizualizacji krok-po-kroku."""
     p0 = max(punkty, key=lambda p: (p[1], -p[0]))
-    yield [p0], "Znaleziono punkt startowy p0 (najniższy na ekranie)"
+    yield [p0], "Znaleziono punkt startowy P0 (najnizszy na ekranie)"
 
     def compare_polar(p, q):
         o = orientacja(math_coords(p0), math_coords(p), math_coords(q))
@@ -32,7 +32,7 @@ def graham_scan_generator(punkty):
             return -1 if d_p < d_q else (1 if d_p > d_q else 0)
 
     posortowane = sorted([p for p in punkty if p != p0], key=cmp_to_key(compare_polar))
-    yield [p0] + posortowane, "Posortowano punkty kątowo względem p0"
+    yield [p0] + posortowane, "Posortowano punkty katowo wzgledem P0"
 
     unikalne_katy = []
     for p in posortowane:
@@ -41,7 +41,7 @@ def graham_scan_generator(punkty):
         unikalne_katy.append(p)
 
     if len(unikalne_katy) < 2:
-        yield [p0] + unikalne_katy, "Za mało punktów do zbudowania figury."
+        yield [p0] + unikalne_katy, "Za malo punktow do zbudowania figury."
         return
 
     stos = [p0, unikalne_katy[0], unikalne_katy[1]]
@@ -50,12 +50,12 @@ def graham_scan_generator(punkty):
     for i in range(2, len(unikalne_katy)):
         p_i = unikalne_katy[i]
         while len(stos) > 1 and orientacja(math_coords(stos[-2]), math_coords(stos[-1]), math_coords(p_i)) <= 0:
-            yield list(stos) + [p_i], f"Wykryto skręt w prawo! Usuwam punkt ze stosu..."
+            yield list(stos) + [p_i], f"Wykryto skret w prawo! Usuwam punkt ze stosu..."
             stos.pop()
         stos.append(p_i)
-        yield list(stos), f"Skręt w lewo prawidłowy. Dodano punkt do otoczki."
+        yield list(stos), f"Skret w lewo prawidlowy. Dodano punkt do otoczki."
 
-    yield list(stos) + [p0], "Algorytm zakończony! Trasa Patrolu Księcia wyznaczona."
+    yield list(stos) + [p0], "Algorytm zakonczony! Trasa Patrolu Ksiecia wyznaczona."
 
 
 class GrahamScene:
@@ -83,7 +83,7 @@ class GrahamScene:
         mine_img = self.images.get("kopalnia_sm")
         for p in points:
             if mine_img:
-                surface.blit(mine_img, (p[0] - 30, p[1] - 30))
+                surface.blit(mine_img, (p[0] - 35, p[1] - 35))
             else:
                 pygame.draw.rect(surface, theme.AMBER, (p[0] - 12, p[1] - 12, 24, 24))
 
@@ -93,14 +93,14 @@ class GrahamScene:
             # Punkt startowy p0 — flaga
             flaga = self.images.get("flaga_p0")
             if flaga:
-                surface.blit(flaga, (p0[0] - 20, p0[1] - 40))
+                surface.blit(flaga, (p0[0] - 25, p0[1] - 50))
             draw_glow_circle(surface, theme.EMERALD, p0, 8)
 
             if "Posortowano" in message:
                 # Linie od p0 do posortowanych punktów
                 for idx, p in enumerate(current_data[1:]):
-                    pygame.draw.line(surface, theme.FAINT_GRAY, p0, p, 1)
-                    txt = self.fonts["small"].render(str(idx + 1), True, theme.CRYSTAL_BLUE)
+                    pygame.draw.line(surface, theme.FAINT_GRAY, p0, p, 2)
+                    txt = self.fonts["small"].render(str(idx + 1), True, theme.GLOW_BLUE)
                     surface.blit(txt, (p[0] + 25, p[1] - 25))
             else:
                 # Linie otoczki z glow
@@ -114,11 +114,11 @@ class GrahamScene:
                     draw_glow_circle(surface, theme.AMBER, p, 6)
 
                 # Podświetlenie przy skręcie w prawo
-                if len(current_data) > 1 and "skręt w prawo" in message:
+                if len(current_data) > 1 and "skret w prawo" in message:
                     draw_glow_line(surface, theme.BLOOD_RED,
                                    current_data[-2], current_data[-1], 3, 12)
                     pygame.draw.circle(surface, theme.BLOOD_RED, current_data[-1], 8, 2)
 
         # Nagłówek
         step_text = f"Krok {history_idx + 1}/{len(history)}: {message}"
-        draw_title_bar(surface, "⚔ Patrol Księcia — Algorytm Grahama", step_text, self.fonts)
+        draw_title_bar(surface, "Patrol Ksiecia — Algorytm Grahama", step_text, self.fonts)

@@ -12,11 +12,11 @@ from src.przydzial_krasnoludkow import zbuduj_i_rozwiaz_siec
 
 
 def mcmf_generator(krasnoludki, kopalnie):
-    """Generator kroków wizualizacji Min-Cost Max-Flow."""
-    yield {"step": "init", "przydzialy": []}, "Wyznaczono Źródło (S) i Ujście (T)"
-    yield {"step": "source_edges", "przydzialy": []}, "Krawędzie ze Źródła do Krasnoludków (Przepustowość: 1)"
-    yield {"step": "mine_edges", "przydzialy": []}, "Krawędzie z Kopalni do Ujścia (Przepustowość: Pojemność)"
-    yield {"step": "bipartite", "przydzialy": []}, "Potencjalne drogi do pracy (Koszt = odległość)"
+    """Generator krokow wizualizacji Min-Cost Max-Flow."""
+    yield {"step": "init", "przydzialy": []}, "Wyznaczono Zrodlo (S) i Ujscie (T)"
+    yield {"step": "source_edges", "przydzialy": []}, "Krawedzie ze Zrodla do Krasnoludkow (Przepustowosc: 1)"
+    yield {"step": "mine_edges", "przydzialy": []}, "Krawedzie z Kopalni do Ujscia (Przepustowosc: Pojemnosc)"
+    yield {"step": "bipartite", "przydzialy": []}, "Potencjalne drogi do pracy (Koszt = odleglosc)"
 
     flow, cost, przydzialy = zbuduj_i_rozwiaz_siec(krasnoludki, kopalnie)
 
@@ -24,10 +24,10 @@ def mcmf_generator(krasnoludki, kopalnie):
     for p in przydzialy:
         current_przydzialy.append(p)
         yield {"step": "flow", "przydzialy": list(current_przydzialy)}, \
-              f"Przepływ: {p[0]} → {p[1]} (Koszt: {p[2]})"
+              f"Przeplyw: {p[0]} -> {p[1]} (Koszt: {p[2]})"
 
     yield {"step": "done", "przydzialy": current_przydzialy}, \
-          f"Zakończono! Przydzielono: {flow} krasnali, Koszt: {cost}"
+          f"Zakonczono! Przydzielono: {flow} krasnali, Koszt: {cost}"
 
 
 class MCMFScene:
@@ -36,6 +36,15 @@ class MCMFScene:
     def __init__(self, fonts, images):
         self.fonts = fonts
         self.images = images
+        self.font_cache = {}
+
+    def get_font_of_size(self, size, bold=True):
+        if (size, bold) not in self.font_cache:
+            # Uzywamy domyslnego fontu Pygame (None), ktory gwarantuje poprawne skalowanie rozmiaru
+            f = pygame.font.Font(None, size)
+            f.set_bold(bold)
+            self.font_cache[(size, bold)] = f
+        return self.font_cache[(size, bold)]
 
     def draw(self, surface, krasnoludki, kopalnie, history, history_idx):
         """Rysuje aktualny stan algorytmu MCMF."""
@@ -56,6 +65,19 @@ class MCMFScene:
         n = len(krasnoludki)
         m = len(kopalnie)
 
+        # Dynamiczne skalowanie rozmiarów
+        # Krasnoludki (n): od 65px (n <= 10) do 18px (n >= 50)
+        dwarf_size = max(18, min(65, int(65 - (n - 10) * (47 / 40)))) if n > 10 else 65
+        dwarf_rad = dwarf_size // 2
+        dwarf_font_size = max(8, min(18, int(8 + (dwarf_size - 18) * (10 / 47))))
+        dwarf_font = self.get_font_of_size(dwarf_font_size, bold=True)
+
+        # Kopalnie (m): od 65px (m <= 5) do 24px (m >= 20)
+        mine_size = max(24, min(65, int(65 - (m - 5) * (41 / 15)))) if m > 5 else 65
+        mine_rad = mine_size // 2
+        mine_font_size = max(9, min(18, int(9 + (mine_size - 24) * (9 / 41))))
+        mine_font = self.get_font_of_size(mine_font_size, bold=True)
+
         # Pozycje kolumnowe
         col_s_x = int(theme.WIDTH * 0.09)
         col_k_x = int(theme.WIDTH * 0.30)
@@ -65,88 +87,113 @@ class MCMFScene:
         source_pos = (col_s_x, theme.HEIGHT // 2)
         sink_pos = (col_t_x, theme.HEIGHT // 2)
 
-        # Marginesy uwzględniające panel UI (80px na dole) i title bar (90px na górze)
-        margin_top = 100
-        margin_bot = 100
+        # Dynamiczne wyliczenie marginesów tak, aby zmieścić się dokładnie w przedziale Y: [95, 820]
+        k_margin_top = 95 + dwarf_rad
+        k_margin_bot = 820 - dwarf_rad
 
-        def node_y(idx, total):
+        m_margin_top = 95 + mine_rad
+        m_margin_bot = 820 - mine_rad
+
+        def k_node_y(idx, total):
             if total <= 1:
-                return theme.HEIGHT // 2
-            return margin_top + idx * (theme.HEIGHT - margin_top - margin_bot) // (total - 1)
+                return (k_margin_top + k_margin_bot) // 2
+            return k_margin_top + idx * (k_margin_bot - k_margin_top) // (total - 1)
 
-        k_pos = {k_id: (col_k_x, node_y(i, n))
+        def m_node_y(idx, total):
+            if total <= 1:
+                return (m_margin_top + m_margin_bot) // 2
+            return m_margin_top + idx * (m_margin_bot - m_margin_top) // (total - 1)
+
+        k_pos = {k_id: (col_k_x, k_node_y(i, n))
                  for i, (k_id, *_) in enumerate(krasnoludki)}
-        m_pos = {m_id: (col_m_x, node_y(j, m))
+        m_pos = {m_id: (col_m_x, m_node_y(j, m))
                  for j, (m_id, *_) in enumerate(kopalnie)}
 
         # === Krawędzie S -> Krasnoludki ===
         if step in ["source_edges", "mine_edges", "bipartite", "flow", "done"]:
             for k_id, kx, ky, prefs in krasnoludki:
                 draw_arrow(surface, source_pos, k_pos[k_id], theme.FAINT_GRAY,
-                          1, "1", theme.STEEL, start_rad=28, end_rad=21, fonts=self.fonts)
+                          1, "1", theme.STEEL, start_rad=55, end_rad=dwarf_rad, fonts=self.fonts)
 
         # === Krawędzie Kopalnie -> T ===
         if step in ["mine_edges", "bipartite", "flow", "done"]:
             for m_id, mx, my, cap in kopalnie:
                 draw_arrow(surface, m_pos[m_id], sink_pos, theme.FAINT_GRAY,
-                          1, f"{cap}", theme.STEEL, start_rad=40, end_rad=28, fonts=self.fonts)
+                          1, f"{cap}", theme.STEEL, start_rad=mine_rad, end_rad=55, fonts=self.fonts)
 
         # === Krawędzie K -> M (bipartite) ===
         if step in ["bipartite", "flow", "done"]:
             for k_id, kx, ky, prefs in krasnoludki:
                 for m_id, mx, my, cap in kopalnie:
                     draw_arrow(surface, k_pos[k_id], m_pos[m_id], (50, 45, 65),
-                              1, "", start_rad=21, end_rad=40, fonts=self.fonts)
+                               1, "", start_rad=dwarf_rad, end_rad=mine_rad, fonts=self.fonts)
 
         # === Aktywne przydziały (wynik MCMF) ===
         for k_id, m_id, cost in przydzialy:
             if k_id in k_pos and m_id in m_pos:
                 draw_arrow(surface, k_pos[k_id], m_pos[m_id], theme.EMERALD,
-                          3, f"{cost}", theme.GOLD, start_rad=21, end_rad=40,
+                          3, f"{cost}", theme.GOLD, start_rad=dwarf_rad, end_rad=mine_rad,
                           fonts=self.fonts, glow=True)
 
         # === Węzły na wierzchu ===
         
-        # Źródło S — tron
+        # Źródło S — tron (rozmiar 110x110, przesunięcie 55)
         tron = self.images.get("tron")
         if tron:
-            surface.blit(tron, (source_pos[0] - 28, source_pos[1] - 28))
+            surface.blit(tron, (source_pos[0] - 55, source_pos[1] - 55))
         else:
             draw_glow_circle(surface, theme.EMERALD_DARK, source_pos, 22)
         ts = self.fonts["subtitle"].render("S", True, theme.EMERALD)
-        surface.blit(ts, (source_pos[0] - ts.get_width() // 2, source_pos[1] + 30))
+        surface.blit(ts, (source_pos[0] - ts.get_width() // 2, source_pos[1] + 60))
 
-        # Ujście T — wózek z owsianką
+        # Ujście T — wózek z owsianką (rozmiar 110x110, przesunięcie 55)
         wozek = self.images.get("wozek")
         if wozek:
-            surface.blit(wozek, (sink_pos[0] - 28, sink_pos[1] - 28))
+            surface.blit(wozek, (sink_pos[0] - 55, sink_pos[1] - 55))
         else:
             draw_glow_circle(surface, theme.BLOOD_RED, sink_pos, 22)
         tt = self.fonts["subtitle"].render("T", True, theme.SOFT_RED)
-        surface.blit(tt, (sink_pos[0] - tt.get_width() // 2, sink_pos[1] + 30))
+        surface.blit(tt, (sink_pos[0] - tt.get_width() // 2, sink_pos[1] + 60))
 
-        # Krasnoludki — sprite'y
+        # Krasnoludki — sprite'y (skalowane)
         krasnal_img = self.images.get("krasnal")
+        if krasnal_img:
+            krasnal_scaled = pygame.transform.smoothscale(krasnal_img, (dwarf_size, dwarf_size))
+        else:
+            krasnal_scaled = None
+
         for k_id, kx, ky, prefs in krasnoludki:
             pos = k_pos[k_id]
-            if krasnal_img:
-                surface.blit(krasnal_img, (pos[0] - 21, pos[1] - 21))
+            if krasnal_scaled:
+                surface.blit(krasnal_scaled, (pos[0] - dwarf_rad, pos[1] - dwarf_rad))
             else:
-                draw_glow_circle(surface, theme.NODE_DWARF, pos, 16)
-            tk = self.fonts["small"].render(k_id, True, theme.PARCHMENT)
-            surface.blit(tk, (pos[0] - tk.get_width() // 2, pos[1] + 23))
+                draw_glow_circle(surface, theme.NODE_DWARF, pos, dwarf_rad)
 
-        # Kopalnie — sprite'y kopalni
+        # Kopalnie — sprite'y kopalni (skalowane)
         mine_img = self.images.get("kopalnia_lg")
+        if mine_img:
+            mine_scaled = pygame.transform.smoothscale(mine_img, (mine_size, mine_size))
+        else:
+            mine_scaled = None
+
         for m_id, mx, my, cap in kopalnie:
             pos = m_pos[m_id]
-            if mine_img:
-                surface.blit(mine_img, (pos[0] - 40, pos[1] - 40))
+            if mine_scaled:
+                surface.blit(mine_scaled, (pos[0] - mine_rad, pos[1] - mine_rad))
             else:
-                pygame.draw.rect(surface, theme.AMBER, (pos[0] - 16, pos[1] - 16, 32, 32))
-            tm = self.fonts["small"].render(f"{m_id} [{cap}]", True, theme.PARCHMENT)
-            surface.blit(tm, (pos[0] - tm.get_width() // 2, pos[1] + 42))
+                pygame.draw.rect(surface, theme.AMBER, (pos[0] - mine_rad, pos[1] - mine_rad, mine_size, mine_size))
 
-        # Nagłówek
+        # Rysowanie podpisów (w osobnym kroku, po lewej dla krasnali, po prawej dla kopalń)
+        for k_id, kx, ky, prefs in krasnoludki:
+            pos = k_pos[k_id]
+            tk = dwarf_font.render(k_id, True, theme.PARCHMENT)
+            surface.blit(tk, (pos[0] - dwarf_rad - tk.get_width() - 8, pos[1] - tk.get_height() // 2))
+
+        for m_id, mx, my, cap in kopalnie:
+            pos = m_pos[m_id]
+            tm = mine_font.render(f"{m_id} [{cap}]", True, theme.PARCHMENT)
+            surface.blit(tm, (pos[0] + mine_rad + 8, pos[1] - tm.get_height() // 2))
+
+        # Naglowek
         step_text = f"Krok {history_idx + 1}/{len(history)}: {message}"
-        draw_title_bar(surface, "⛏ Przydział Krasnoludków — Min-Cost Max-Flow", step_text, self.fonts)
+        draw_title_bar(surface, "Przydzial Krasnoludkow — Min-Cost Max-Flow", step_text, self.fonts)

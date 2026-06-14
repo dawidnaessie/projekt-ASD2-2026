@@ -54,7 +54,7 @@ def main():
     pygame.init()
 
     screen = pygame.display.set_mode((theme.WIDTH, theme.HEIGHT))
-    pygame.display.set_caption("Wizualizacja Algorytmów — Krasnoludki 2026")
+    pygame.display.set_caption("Wizualizacja Algorytmow — Krasnoludki 2026")
 
     # Ładowanie zasobów
     fonts = theme.load_fonts()
@@ -96,7 +96,24 @@ def main():
 
     def setup_graham():
         nonlocal points, history, history_idx, is_auto, finished
-        points = [generate_point_in_map() for _ in range(num_m)]
+        new_points = []
+        min_dist = 75  # Minimum distance to prevent mines from overlapping
+        for _ in range(num_m):
+            for _ in range(100):
+                candidate = generate_point_in_map()
+                too_close = False
+                for p in new_points:
+                    dx = candidate[0] - p[0]
+                    dy = candidate[1] - p[1]
+                    if (dx * dx + dy * dy) < (min_dist * min_dist):
+                        too_close = True
+                        break
+                if not too_close:
+                    new_points.append(candidate)
+                    break
+            else:
+                new_points.append(generate_point_in_map())
+        points = new_points
         history = list(graham_scan_generator(points))
         if not history:
             history = [([], "")]
@@ -140,7 +157,6 @@ def main():
                 running = False
 
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                print(pygame.mouse.get_pos())
                 if mode == "MENU":
                     result = menu_scene.handle_click(event.pos)
                     if result == "GRAHAM":
@@ -216,14 +232,6 @@ def main():
                     if event.key == pygame.K_ESCAPE:
                         mode = "MENU"
                         is_auto = False
-                    elif event.key == pygame.K_SPACE:
-                        # Reset aktualnego algorytmu
-                        if mode == "GRAHAM":
-                            setup_graham()
-                        elif mode == "MCMF":
-                            setup_mcmf()
-                        elif mode == "DEKAMETROWCY":
-                            setup_dek()
                     elif event.key == pygame.K_r:
                         regenerate_data()
                         if mode == "GRAHAM":

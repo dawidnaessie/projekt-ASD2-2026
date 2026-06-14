@@ -13,12 +13,12 @@ from src.dekametrowcy import uruchom_modul as dekametrowcy_rmq, _wczytaj_glosnos
 
 
 def dekametrowcy_generator(glosnosci, zapytania):
-    """Generator kroków wizualizacji Segment Tree RMQ."""
+    """Generator krokow wizualizacji Segment Tree RMQ."""
     n = len(glosnosci)
     yield {"phase": "data", "ql": -1, "qr": -1, "max_idx": -1, "active": []}, \
-          "Tablica głośności dekametrowców"
+          "Tablica glosnosci dekametrowcow"
     yield {"phase": "tree", "ql": -1, "qr": -1, "max_idx": -1, "active": []}, \
-          "Budowanie Drzewa Przedziałowego (Segment Tree)"
+          "Budowanie Drzewa Przedzialowego (Segment Tree)"
 
     wyniki = dekametrowcy_rmq(glosnosci, zapytania)
     for (ql, qr), (bs, be, max_val) in zip(zapytania, wyniki):
@@ -29,10 +29,10 @@ def dekametrowcy_generator(glosnosci, zapytania):
                 max_idx = idx
                 break
         yield {"phase": "query", "ql": bs, "qr": be, "max_idx": max_idx, "active": active}, \
-              f"Zapytanie [{bs}..{be}]: maks. głośność = {max_val} dB"
+              f"Zapytanie [{bs}..{be}]: maks. glosnosc = {max_val} dB"
 
     yield {"phase": "done", "ql": -1, "qr": -1, "max_idx": -1, "active": []}, \
-          "Zakończono wszystkie zapytania RMQ!"
+          "Zakonczono wszystkie zapytania RMQ!"
 
 
 class DekametrowcyScene:
@@ -41,6 +41,14 @@ class DekametrowcyScene:
     def __init__(self, fonts, images):
         self.fonts = fonts
         self.images = images
+        self.font_cache = {}
+
+    def get_font_of_size(self, size, bold=True):
+        if (size, bold) not in self.font_cache:
+            f = pygame.font.Font(None, size)
+            f.set_bold(bold)
+            self.font_cache[(size, bold)] = f
+        return self.font_cache[(size, bold)]
 
     def _draw_segment_tree(self, surface, rmq, n, ql, qr, active_nodes=None):
         """Rysuje pełne drzewo Segment Tree w górnej części ekranu."""
@@ -90,7 +98,7 @@ class DekametrowcyScene:
                     draw_node(2 * v + 1, mid + 1, r, right_cx, child_cy, child_span)
 
             # Rysuj węzeł
-            radius = 18 if l == r else 14
+            radius = 24
             cx_i, cy_i = int(cx), int(cy)
 
             if is_full_match:
@@ -103,8 +111,10 @@ class DekametrowcyScene:
 
             # Wartość w węźle
             val_str = str(int(val))
-            node_font = self.fonts.get("small")
-            val_surf = node_font.render(val_str, True, theme.PARCHMENT)
+            node_font_size = 20
+            node_font = self.get_font_of_size(node_font_size, bold=True)
+            text_color = theme.BG_DARKER if (is_full_match or is_active) else theme.PARCHMENT
+            val_surf = node_font.render(val_str, True, text_color)
             surface.blit(val_surf, (cx_i - val_surf.get_width() // 2,
                                     cy_i - val_surf.get_height() // 2))
 
@@ -144,7 +154,7 @@ class DekametrowcyScene:
         # === Słupki (dolna połowa) ===
         margin_x = 100
         margin_top_bars = theme.HEIGHT // 2 + 10
-        margin_bot = theme.HEIGHT - 120  # Miejsce na panel UI (podniesione z -95 o 25px)
+        margin_bot = theme.HEIGHT - 120  # Miejsce na panel UI
         bar_area_w = theme.WIDTH - 2 * margin_x
         bar_w = max(20, bar_area_w // n_bars - 6)
         spacing = (bar_area_w - bar_w * n_bars) // (n_bars + 1)
@@ -194,13 +204,14 @@ class DekametrowcyScene:
             bx_l = margin_x + spacing + ql * (bar_w + spacing) - 4
             bx_r = margin_x + spacing + qr * (bar_w + spacing) + bar_w + 4
             # Glow ramka
-            glow_surf = pygame.Surface((bx_r - bx_l, margin_bot - margin_top_bars + 30), pygame.SRCALPHA)
+            glow_h = margin_bot - margin_top_bars + 30
+            glow_surf = pygame.Surface((bx_r - bx_l, glow_h), pygame.SRCALPHA)
             glow_surf.fill((255, 200, 50, 20))
-            surface.blit(glow_surf, (bx_l, margin_top_bars - 10))
+            surface.blit(glow_surf, (bx_l, margin_top_bars))
             pygame.draw.rect(surface, theme.GOLD,
-                           (bx_l, margin_top_bars - 10, bx_r - bx_l, margin_bot - margin_top_bars + 30),
+                           (bx_l, margin_top_bars, bx_r - bx_l, glow_h),
                            2, border_radius=6)
 
-        # Nagłówek
+        # Naglowek
         step_text = f"Krok {history_idx + 1}/{len(history)}: {message}"
-        draw_title_bar(surface, "🛡 Dekametrowcy — Segment Tree RMQ", step_text, self.fonts)
+        draw_title_bar(surface, "Dekametrowcy — Segment Tree RMQ", step_text, self.fonts)

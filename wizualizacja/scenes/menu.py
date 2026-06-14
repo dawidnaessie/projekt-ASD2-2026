@@ -26,21 +26,21 @@ class MenuScene:
         else:
             surface.fill(theme.BG_DARK)
             title_font = self.fonts.get("title")
-            title = title_font.render("Wizualizacja Algorytmów — Krasnoludki 2026", True, theme.GOLD)
+            title = title_font.render("Wizualizacja Algorytmow — Krasnoludki 2026", True, theme.GOLD)
             surface.blit(title, (theme.WIDTH // 2 - title.get_width() // 2, 80))
 
         # Wskaźniki na kamiennej tablicy
-        base_y = int(theme.HEIGHT * 0.25)
+        base_y = int(theme.HEIGHT * 0.25) + 7
         tab_font = self.fonts.get("menu_tab")
 
-        kras_txt = tab_font.render(f"Krasnoludki: {num_k} (E/D)", True, theme.DARK_TEXT)
+        kras_txt = tab_font.render(f"KRASNOLUDKI: {num_k} (E/D)", True, theme.DARK_TEXT)
         surface.blit(kras_txt, (theme.WIDTH // 2 - kras_txt.get_width() // 2, base_y))
 
-        kop_txt = tab_font.render(f"Kopalnie: {num_m} (W/S)", True, theme.DARK_TEXT)
-        surface.blit(kop_txt, (theme.WIDTH // 2 - kop_txt.get_width() // 2, base_y + 35))
+        kop_txt = tab_font.render(f"KOPALNIE: {num_m} (W/S)", True, theme.DARK_TEXT)
+        surface.blit(kop_txt, (theme.WIDTH // 2 - kop_txt.get_width() // 2, base_y + 30))
 
-        opt_r = tab_font.render("R — Przelosuj pozycje i kopalnie", True, theme.DARK_TEXT)
-        surface.blit(opt_r, (theme.WIDTH // 2 - opt_r.get_width() // 2, base_y + 75))
+        opt_r = tab_font.render("R — PRZELOSUJ", True, theme.DARK_TEXT)
+        surface.blit(opt_r, (theme.WIDTH // 2 - opt_r.get_width() // 2, base_y + 60))
 
         # Hover na przyciskach — subtelne podświetlenie
         mouse = pygame.mouse.get_pos()
@@ -54,8 +54,8 @@ class MenuScene:
         if not bg:
             btn_font = self.fonts.get("subtitle")
             labels = [
-                (self.btn_graham, "1 — Patrol Księcia (Graham)"),
-                (self.btn_mcmf,   "2 — Przydział Krasnoludków (MCMF)"),
+                (self.btn_graham, "1 — Patrol Ksiecia (Graham)"),
+                (self.btn_mcmf,   "2 — Przydzial Krasnoludkow (MCMF)"),
                 (self.btn_dek,    "3 — Dekametrowcy (Segment Tree)"),
             ]
             for rect, label in labels:

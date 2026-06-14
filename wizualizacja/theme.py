@@ -90,9 +90,9 @@ def load_fonts():
         "title":    _load_font("MedievalSharp-Regular.ttf", 36, bold=True),
         "subtitle": _load_font("MedievalSharp-Regular.ttf", 26),
         "body":     pygame.font.SysFont("georgia", 20),
-        "small":    pygame.font.SysFont("georgia", 16),
+        "small":    pygame.font.SysFont("georgia", 22, bold = True),
         "mono":     pygame.font.SysFont("couriernew", 18),
-        "menu_tab": _load_font("MedievalSharp-Regular.ttf", 16, bold=False),
+        "menu_tab": _load_font("MedievalSharp-Regular.ttf", 19, bold=False),
         "ui_btn":   pygame.font.SysFont("georgia", 16, bold=True),
     }
 
@@ -104,6 +104,9 @@ def _safe_load(filename, size=None):
     path = os.path.join(_ASSETS, filename)
     try:
         img = pygame.image.load(path).convert_alpha()
+        if filename == "pasek_ui.png":
+            # Crop to the actual wooden beam (vertical range [150, 350] inside 500x500 canvas)
+            img = img.subsurface((0, 150, img.get_width(), 200))
         if size:
             img = pygame.transform.smoothscale(img, size)
         return img
@@ -121,15 +124,15 @@ def load_images():
         "bg_dekametrowcy": _safe_load("tlo_dekametrowcy.png", (WIDTH, HEIGHT)),
 
         # Sprite'y obiektów (Mają już przezroczyste tło w plikach PNG)
-        "kopalnia_sm":     _safe_load("kopalnia.png", (60, 60)),
-        "kopalnia_lg":     _safe_load("kopalnia.png", (80, 80)),
-        "krasnal":         _safe_load("krasnal_sprite.png", (42, 42)),
+        "kopalnia_sm":     _safe_load("kopalnia.png", (70, 70)),
+        "kopalnia_lg":     _safe_load("kopalnia.png", (65, 65)),
+        "krasnal":         _safe_load("krasnal_sprite.png", (65, 65)),
         "tron":            _safe_load("tron_sprite.png", (110, 110)),
         "wozek":           _safe_load("wozek_sprite.png", (110, 110)),
-        "flaga_p0":        _safe_load("flaga_p0.png", (40, 40)),
+        "flaga_p0":        _safe_load("flaga_p0.png", (50, 50)),
 
         # UI (NIE usuwamy — ciemne tło paska jest zamierzone)
-        "pasek_ui":        _safe_load("pasek_ui.png", (WIDTH, 80)),
+        "pasek_ui":        _safe_load("pasek_ui.png", (WIDTH, 86)),
 
         # Ikona aplikacji
         "app_icon":        _safe_load("app_icon.png"),
