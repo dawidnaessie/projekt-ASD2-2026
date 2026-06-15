@@ -26,7 +26,7 @@ class MenuScene:
         else:
             surface.fill(theme.BG_DARK)
             title_font = self.fonts.get("title")
-            title = title_font.render("Wizualizacja Algorytmow — Krasnoludki 2026", True, theme.GOLD)
+            title = title_font.render("Wizualizacja algorytmów — DwarfTech", True, theme.GOLD)
             surface.blit(title, (theme.WIDTH // 2 - title.get_width() // 2, 80))
 
         # Wskaźniki na kamiennej tablicy

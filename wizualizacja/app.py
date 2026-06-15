@@ -54,7 +54,7 @@ def main():
     pygame.init()
 
     screen = pygame.display.set_mode((theme.WIDTH, theme.HEIGHT))
-    pygame.display.set_caption("Wizualizacja Algorytmow — Krasnoludki 2026")
+    pygame.display.set_caption("DwarfTech Enterprise 2026 — Wizualizacja Algorytmów")
 
     # Ładowanie zasobów
     fonts = theme.load_fonts()
@@ -143,10 +143,8 @@ def main():
         finished = False
 
     def regenerate_data():
-        nonlocal shared_krasnoludki, shared_kopalnie, dek_glosnosci, last_regen_time
+        nonlocal shared_krasnoludki, shared_kopalnie, last_regen_time
         shared_krasnoludki, shared_kopalnie = generate_krasnoludki_kopalnie(num_k, num_m)
-        n_dek = random.randint(6, 12)
-        dek_glosnosci = [random.randint(10, 120) for _ in range(n_dek)]
         last_regen_time = pygame.time.get_ticks()
 
     # === GŁÓWNA PĘTLA ===
@@ -200,6 +198,7 @@ def main():
                         elif mode == "MCMF":
                             setup_mcmf()
                         elif mode == "DEKAMETROWCY":
+                            dek_glosnosci = [random.randint(10, 120) for _ in range(len(dek_glosnosci))]
                             setup_dek()
 
             elif event.type == pygame.KEYDOWN:
@@ -221,6 +220,8 @@ def main():
                     elif event.key == pygame.K_r:
                         num_k = random.randint(5, 40)
                         num_m = random.randint(3, 15)
+                        n_dek = random.randint(6, 12)
+                        dek_glosnosci = [random.randint(10, 120) for _ in range(n_dek)]
 
                     if event.key in (pygame.K_r, pygame.K_e, pygame.K_d, pygame.K_w, pygame.K_s):
                         regenerate_data()
