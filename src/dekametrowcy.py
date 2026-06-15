@@ -5,9 +5,10 @@ class SegmentTreeRMQ:
     """
     Nieliniowa struktura danych (Drzewo Przedziałowe) służąca do błyskawicznego
     odpowiadania na zapytania o maksimum na zadanym przedziale (Range Maximum Query).
-    Implementacja rekurencyjna zgodna z paradygmatem wykładowym.
+    Implementacja rekurencyjna zgodna z wykładem.
     """
 
+    
     def __init__(self, dane: List[int]) -> None:
         """
         Buduje drzewo przedziałowe na podstawie początkowej tablicy głośności.
@@ -21,8 +22,8 @@ class SegmentTreeRMQ:
         self.n: int = len(dane)
         self.dane: List[int] = dane
         # Rozmiar 4n zapewnia bezpieczeństwo indeksowania dzieci w dół drzewa.
-        self.drzewo: List[float] = [float('-inf')] * (4 * self.n)
-        
+        self.drzewo: List[float] = [float('-inf')] * (4 * self.n) #4n, zeby uniknac przekroczenia bo mamy 2v i 2v+1 wiec najgorszy przypadek musimy miec 4n
+        # brutal force 
         if self.n > 0:
             # Wywołanie procedury BUILD(root, 1, n, f) od korzenia (v=1)
             self._build(1, 0, self.n - 1)
@@ -34,14 +35,14 @@ class SegmentTreeRMQ:
         Złożoność czasowa: O(n)
         """
         # 1) jeśli (l == r), to tree[v] = A[l]
-        if l == r:
+        if l == r: # jesli to, to jestesmy na samym dnie drzewa w lisciu
             self.drzewo[v] = self.dane[l]
         else:
             # a) mid = floor((l + r) / 2)
             mid = (l + r) // 2
-            # b) BUILD(v.left, l, mid, f)
+            # b) BUILD(v.left, l, mid, f) lewe dziecko
             self._build(2 * v, l, mid)
-            # c) BUILD(v.right, mid + 1, r, f)
+            # c) BUILD(v.right, mid + 1, r, f) prawe dziecko
             self._build(2 * v + 1, mid + 1, r)
             # d) tree[v] = f(tree[v.left], tree[v.right])
             self.drzewo[v] = max(self.drzewo[2 * v], self.drzewo[2 * v + 1])
@@ -54,10 +55,12 @@ class SegmentTreeRMQ:
         """
         # 1) jeśli (r < ql lub qr < l), to zwróć e (element neutralny)
         # Dla f=max, element neutralny e = -nieskończoność
+        #jesli prawy koniec wezla jest mniejszy niz lewy koniec zapytania i na odwrot
         if r < ql or qr < l:
             return float('-inf')
             
         # 2) jeśli (ql <= l oraz r <= qr), to zwróć tree[v]
+        # jesli lewy koniec zapytania jest mniejszy lub rowny lewemu koncowi wezla i na odwrot
         if ql <= l and r <= qr:
             return self.drzewo[v]
             
@@ -74,7 +77,7 @@ class SegmentTreeRMQ:
         """
         Wyszukuje maksymalną głośność w przedziale [lewy, prawy] włącznie.
         
-        Złożoność czasowa: O(log n) - odwiedzamy logarytmiczną liczbę węzłów[cite: 228].
+        Złożoność czasowa: O(log n) - odwiedzamy logarytmiczną liczbę węzłów
         Złożoność pamięciowa: O(log n) - stos wywołań rekurencyjnych.
         
         Argumenty:
@@ -91,6 +94,30 @@ class SegmentTreeRMQ:
         wynik = self._query(1, 0, self.n - 1, lewy, prawy)
         return int(wynik)
 
+
+def brute_force(dane: List[int], lewy: int, prawy: int) -> int:
+    """
+    Rozwiązanie naiwne (Brute Force) dla problemu Range Maximum Query.
+    Przeszukuje tablicę element po elemencie w pętli for.
+    
+    Złożoność czasowa: O(n) dla jednego zapytania.
+    Złożoność pamięciowa: O(1) - nie używa dodatkowej pamięci.
+    """
+    if not dane:
+        return 0
+        
+    # Zabezpieczenie przed wyjściem poza indeksy tablicy
+    lewy = max(0, min(lewy, len(dane) - 1))
+    prawy = max(0, min(prawy, len(dane) - 1))
+    
+    maksimum: float = float('-inf')
+    
+    # Przejście po każdym elemencie po kolei
+    for i in range(lewy, prawy + 1):
+        if dane[i] > maksimum:
+            maksimum = dane[i]
+            
+    return int(maksimum)
 
 def uruchom_modul(dane_glosnosci: List[int], zapytania: List[Tuple[int, int]]) -> List[Tuple[int, int, int]]:
     """
@@ -114,6 +141,8 @@ def uruchom_modul(dane_glosnosci: List[int], zapytania: List[Tuple[int, int]]) -
     
     for start, koniec in zapytania:
         # Zabezpieczenie przed wyjściem poza tablicę
+        #jak mamy np podany index 100 a mamy 10 krasnoludkow to max dac 9
+        #to samo z min jakby podali -10 to min dac 0 
         bezpieczny_start = max(0, min(start, len(dane_glosnosci) - 1))
         bezpieczny_koniec = max(0, min(koniec, len(dane_glosnosci) - 1))
         
@@ -137,20 +166,80 @@ def _wczytaj_glosnosci(sciezka: str) -> List[int]:
 
 
 if __name__ == "__main__":
+    import random
+    import time
+
+    print("==================================================")
+    print(" START TESTU BAZOWEGO Z PLIKU ")
+    print("==================================================")
     sciezka_dane = os.path.join(os.path.dirname(__file__), '..', 'data', 'dekametrowcy.txt')
     try:
         glosnosci_test = _wczytaj_glosnosci(sciezka_dane)
-        print("=== TEST MODUŁU OBRONNEGO ===")
-        print(f"Wczytano {len(glosnosci_test)} dekametrowców na granicy.")
+        print(f"Wczytano {len(glosnosci_test)} dekametrowców na granicy z pliku.")
         
-        # Przykładowe ataki testowe
         ataki_testowe = [(0, 2), (2, 5), (5, 9)]
-        
         raport = uruchom_modul(glosnosci_test, ataki_testowe)
         
-        print("\nOdpowiedzi systemu na ataki:")
+        print("Odpowiedzi systemu na ataki (Drzewo Przedziałowe):")
         for start, koniec, max_val in raport:
             print(f" -> Atak na odcinek [{start}-{koniec}]: Najgłośniejszy rozkaz to {max_val} dB")
             
     except FileNotFoundError:
         print(f"Błąd! Nie znaleziono pliku wejściowego: {os.path.abspath(sciezka_dane)}")
+
+
+    print("\n==================================================")
+    print(" AUTOMATYCZNE TESTY RÓŻNICOWE (BRUTE FORCE VS TREE) ")
+    print("==================================================")
+    
+    ROZMIAR_TESTU = 10000
+    LICZBA_ZAPYTAŃ = 5000
+    
+    print(f"Generowanie losowej linii obrony: {ROZMIAR_TESTU} krasnoludków...")
+    losowe_glosnosci = [random.randint(10, 120) for _ in range(ROZMIAR_TESTU)]
+    
+    losowe_ataki = []
+    for _ in range(LICZBA_ZAPYTAŃ):
+        l = random.randint(0, ROZMIAR_TESTU - 1)
+        r = random.randint(l, ROZMIAR_TESTU - 1)
+        losowe_ataki.append((l, r))
+        
+    print(f"Wygenerowano {LICZBA_ZAPYTAŃ} losowych zapytań.\n")
+
+    # TEST POPRAWNOŚCI
+    print("--- KROK 1: Sprawdzanie poprawności wyników ---")
+    dowodztwo_tree = SegmentTreeRMQ(losowe_glosnosci)
+    
+    bledy = 0
+    for start, koniec in losowe_ataki:
+        wynik_drzewa = dowodztwo_tree.query(start, koniec)
+        wynik_brute = brute_force(losowe_glosnosci, start, koniec)
+        
+        if wynik_drzewa != wynik_brute:
+            bledy += 1
+            
+    if bledy == 0:
+        print(f"SUKCES! W {LICZBA_ZAPYTAŃ} przypadkach Drzewo Przedziałowe dało wynik w 100% zgodny z Brute Force.")
+    else:
+        print(f"PORAŻKA! Znaleziono rozbieżności w {bledy} przypadkach.")
+
+    # TEST WYDAJNOŚCI
+    print("\n--- KROK 2: Test wydajności (Pojedynek prędkości) ---")
+    
+    # Czas dla Brute Force
+    start_time_bf = time.perf_counter()
+    for start, koniec in losowe_ataki:
+        brute_force(losowe_glosnosci, start, koniec)
+    czas_bf = time.perf_counter() - start_time_bf
+    print(f"Czas dla pętli Brute Force (O(n)): {czas_bf:.4f} sekund")
+
+    # Czas dla Drzewa Przedziałowego
+    start_time_tree = time.perf_counter()
+    for start, koniec in losowe_ataki:
+        dowodztwo_tree.query(start, koniec)
+    czas_tree = time.perf_counter() - start_time_tree
+    print(f"Czas dla Drzewa Przedziałowego (O(log n)): {czas_tree:.4f} sekund")
+
+    if czas_tree < czas_bf:
+        przyspieszenie = czas_bf / czas_tree if czas_tree > 0 else float('inf')
+        print(f"\n[WERDYKT]: Drzewo Przedziałowe okazało się {przyspieszenie:.1f}x szybsze!")

@@ -17,7 +17,7 @@ class MenuScene:
         self.btn_mcmf   = pygame.Rect(551, 740, 342, 120)
         self.btn_dek    = pygame.Rect(970, 740, 342, 120)
 
-    def draw(self, surface, num_k, num_m, show_feedback=False):
+    def draw(self, surface, num_k, num_m, num_dek=0, show_feedback=False):
         """Rysuje ekran menu."""
         # Tło
         bg = self.images.get("bg_menu")
@@ -32,15 +32,19 @@ class MenuScene:
         # Wskaźniki na kamiennej tablicy
         base_y = int(theme.HEIGHT * 0.25) + 7
         tab_font = self.fonts.get("menu_tab")
+        step = 22
 
         kras_txt = tab_font.render(f"KRASNOLUDKI: {num_k} (E/D)", True, theme.DARK_TEXT)
         surface.blit(kras_txt, (theme.WIDTH // 2 - kras_txt.get_width() // 2, base_y))
 
         kop_txt = tab_font.render(f"KOPALNIE: {num_m} (W/S)", True, theme.DARK_TEXT)
-        surface.blit(kop_txt, (theme.WIDTH // 2 - kop_txt.get_width() // 2, base_y + 30))
+        surface.blit(kop_txt, (theme.WIDTH // 2 - kop_txt.get_width() // 2, base_y + step))
+
+        dek_txt = tab_font.render(f"DEKAMETROWCY: {num_dek} (Q/A)", True, theme.DARK_TEXT)
+        surface.blit(dek_txt, (theme.WIDTH // 2 - dek_txt.get_width() // 2, base_y + step * 2))
 
         opt_r = tab_font.render("R — PRZELOSUJ", True, theme.DARK_TEXT)
-        surface.blit(opt_r, (theme.WIDTH // 2 - opt_r.get_width() // 2, base_y + 60))
+        surface.blit(opt_r, (theme.WIDTH // 2 - opt_r.get_width() // 2, base_y + step * 3))
 
         # Hover na przyciskach — subtelne podświetlenie
         mouse = pygame.mouse.get_pos()

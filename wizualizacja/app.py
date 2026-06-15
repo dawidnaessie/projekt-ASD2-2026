@@ -82,7 +82,8 @@ def main():
     points = []
     krasnoludki = []
     kopalnie = []
-    dek_glosnosci = []
+    n_dek_init = random.randint(6, 12)
+    dek_glosnosci = [random.randint(10, 120) for _ in range(n_dek_init)]
     dek_zapytania = []
 
     history = []
@@ -133,10 +134,7 @@ def main():
         finished = False
 
     def setup_dek():
-        nonlocal dek_glosnosci, dek_zapytania, history, history_idx, is_auto, finished
-        dek_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                                'data', 'dekametrowcy.txt')
-        dek_glosnosci = _wczytaj_glosnosci(dek_path)
+        nonlocal dek_zapytania, history, history_idx, is_auto, finished
         n_dek = len(dek_glosnosci)
         dek_zapytania = [(0, n_dek // 3), (n_dek // 3, 2 * n_dek // 3), (2 * n_dek // 3, n_dek - 1)]
         history = list(dekametrowcy_generator(dek_glosnosci, dek_zapytania))
@@ -145,8 +143,10 @@ def main():
         finished = False
 
     def regenerate_data():
-        nonlocal shared_krasnoludki, shared_kopalnie, last_regen_time
+        nonlocal shared_krasnoludki, shared_kopalnie, dek_glosnosci, last_regen_time
         shared_krasnoludki, shared_kopalnie = generate_krasnoludki_kopalnie(num_k, num_m)
+        n_dek = random.randint(6, 12)
+        dek_glosnosci = [random.randint(10, 120) for _ in range(n_dek)]
         last_regen_time = pygame.time.get_ticks()
 
     # === GŁÓWNA PĘTLA ===
@@ -212,6 +212,12 @@ def main():
                         num_m = min(20, num_m + 1)
                     elif event.key == pygame.K_s:
                         num_m = max(1, num_m - 1)
+                    elif event.key == pygame.K_q:
+                        if len(dek_glosnosci) < 20:
+                            dek_glosnosci = dek_glosnosci + [random.randint(10, 120)]
+                    elif event.key == pygame.K_a:
+                        if len(dek_glosnosci) > 1:
+                            dek_glosnosci = dek_glosnosci[:-1]
                     elif event.key == pygame.K_r:
                         num_k = random.randint(5, 40)
                         num_m = random.randint(3, 15)
@@ -238,6 +244,8 @@ def main():
                             setup_graham()
                         elif mode == "MCMF":
                             setup_mcmf()
+                        elif mode == "DEKAMETROWCY":
+                            setup_dek()
                     elif event.key == pygame.K_a:
                         is_auto = not is_auto
                     elif event.key == pygame.K_LEFT:
@@ -266,7 +274,7 @@ def main():
         screen.fill(theme.BG_DARK)
 
         if mode == "MENU":
-            menu_scene.draw(screen, num_k, num_m)
+            menu_scene.draw(screen, num_k, num_m, len(dek_glosnosci))
 
         elif mode == "GRAHAM":
             graham_scene.draw(screen, points, history, history_idx)
